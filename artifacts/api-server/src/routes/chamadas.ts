@@ -94,17 +94,19 @@ router.post("/chamadas", async (req, res): Promise<void> => {
 
       if (!existing) {
         const today = new Date().toISOString().split("T")[0];
-        await db.insert(retencaoTable).values({
+        const [novo] = await db.insert(retencaoTable).values({
           alunoId,
           turmaId,
           percentualFaltas: String(Math.round(pct * 100) / 100),
-          status: "Em_Acompanhamento",
+          status: "Identificado",
+          responsavel: "Secretaria",
           dataNotificacao: today,
-        });
+        }).returning();
         await db.insert(retencaoAuditLogTable).values({
-          retencaoId: 0,
-          acao: "Flagrado automaticamente por excesso de faltas",
+          retencaoId: novo.id,
+          acao: "Identificado automaticamente por excesso de faltas",
           observacao: `Percentual de faltas: ${Math.round(pct * 100) / 100}%`,
+          realizadoPor: "Sistema",
         });
         retencaoFlagged++;
       } else {

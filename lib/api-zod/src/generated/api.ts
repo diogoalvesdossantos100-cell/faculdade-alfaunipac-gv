@@ -28,7 +28,7 @@ export const LoginResponse = zod.object({
     id: zod.number(),
     email: zod.string(),
     nome: zod.string(),
-    role: zod.enum(["Admin", "Coordenador", "Secretaria"]),
+    role: zod.enum(["Admin", "Coordenador", "Secretaria", "Retencao"]),
   }),
 });
 
@@ -39,7 +39,7 @@ export const GetMeResponse = zod.object({
   id: zod.number(),
   email: zod.string(),
   nome: zod.string(),
-  role: zod.enum(["Admin", "Coordenador", "Secretaria"]),
+  role: zod.enum(["Admin", "Coordenador", "Secretaria", "Retencao"]),
 });
 
 /**
@@ -469,15 +469,79 @@ export const ListRetencaoResponseItem = zod.object({
   turmaId: zod.number(),
   percentualFaltas: zod.number(),
   dataNotificacao: zod.string().nullish(),
-  status: zod.enum(["Em_Acompanhamento", "Regularizado", "Reprovado_Faltas"]),
+  status: zod.enum([
+    "Identificado",
+    "Encaminhado",
+    "Em_Contato",
+    "Aguardando_Resposta",
+    "Retorno_Confirmado",
+    "Cancelamento_Solicitado",
+    "Formulario_Preenchido",
+    "Aguardando_Assinatura",
+    "Assinado",
+    "Enviado_CRM",
+    "Removido_BAP",
+    "HBS_Notificado",
+    "Encerrado",
+    "Reintegrado",
+  ]),
   observacaoSecretaria: zod.string().nullish(),
+  responsavel: zod.string(),
   createdAt: zod.string(),
   alunoNome: zod.string(),
   alunoCurso: zod.string(),
+  alunoMatricula: zod.string(),
   disciplinaNome: zod.string(),
   periodo: zod.string(),
 });
 export const ListRetencaoResponse = zod.array(ListRetencaoResponseItem);
+
+/**
+ * @summary Get detailed retention record with student and disciplinas
+ */
+export const GetRetencaoDetalheParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetRetencaoDetalheResponse = zod.object({
+  id: zod.number(),
+  alunoId: zod.number(),
+  turmaId: zod.number(),
+  percentualFaltas: zod.number(),
+  dataNotificacao: zod.string().nullish(),
+  status: zod.string(),
+  observacaoSecretaria: zod.string().nullish(),
+  responsavel: zod.string(),
+  motivoCancelamento: zod.string().nullish(),
+  dataDecisaoAluno: zod.string().nullish(),
+  nomeCoordinadora: zod.string().nullish(),
+  dataAssinatura: zod.string().nullish(),
+  createdAt: zod.string(),
+  alunoNome: zod.string(),
+  alunoCurso: zod.string(),
+  alunoMatricula: zod.string(),
+  alunoValorMensalidade: zod.number(),
+  disciplinaNome: zod.string(),
+  periodo: zod.string(),
+  disciplinas: zod.array(
+    zod.object({
+      disciplinaNome: zod.string(),
+      totalAulas: zod.number(),
+      faltas: zod.number(),
+      percentualFaltas: zod.number(),
+    }),
+  ),
+  timeline: zod.array(
+    zod.object({
+      id: zod.number(),
+      retencaoId: zod.number(),
+      acao: zod.string(),
+      observacao: zod.string().nullish(),
+      realizadoPor: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
 
 /**
  * @summary Update retention record status
@@ -487,9 +551,7 @@ export const UpdateRetencaoParams = zod.object({
 });
 
 export const UpdateRetencaoBody = zod.object({
-  status: zod
-    .enum(["Em_Acompanhamento", "Regularizado", "Reprovado_Faltas"])
-    .optional(),
+  status: zod.string().optional(),
   observacaoSecretaria: zod.string().optional(),
 });
 
@@ -499,9 +561,97 @@ export const UpdateRetencaoResponse = zod.object({
   turmaId: zod.number(),
   percentualFaltas: zod.number(),
   dataNotificacao: zod.string().nullish(),
-  status: zod.enum(["Em_Acompanhamento", "Regularizado", "Reprovado_Faltas"]),
+  status: zod.enum([
+    "Identificado",
+    "Encaminhado",
+    "Em_Contato",
+    "Aguardando_Resposta",
+    "Retorno_Confirmado",
+    "Cancelamento_Solicitado",
+    "Formulario_Preenchido",
+    "Aguardando_Assinatura",
+    "Assinado",
+    "Enviado_CRM",
+    "Removido_BAP",
+    "HBS_Notificado",
+    "Encerrado",
+    "Reintegrado",
+  ]),
   observacaoSecretaria: zod.string().nullish(),
+  responsavel: zod.string(),
+  motivoCancelamento: zod.string().nullish(),
+  dataDecisaoAluno: zod.string().nullish(),
+  nomeCoordinadora: zod.string().nullish(),
+  dataAssinatura: zod.string().nullish(),
   createdAt: zod.string(),
+});
+
+/**
+ * @summary Execute a workflow action on a retention record
+ */
+export const ExecutarAcaoRetencaoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ExecutarAcaoRetencaoBody = zod.object({
+  acao: zod.enum([
+    "encaminhar",
+    "registrar_contato",
+    "aguardar_resposta",
+    "retorno_confirmado",
+    "cancelamento_solicitado",
+    "preencher_formulario",
+    "encaminhar_assinatura",
+    "assinar",
+    "retirar_crm",
+    "remover_bap",
+    "notificar_hbs",
+    "encerrar",
+    "reintegrar",
+  ]),
+  observacao: zod.string().nullish(),
+  motivoCancelamento: zod.string().nullish(),
+  nomeCoordinadora: zod.string().nullish(),
+});
+
+export const ExecutarAcaoRetencaoResponse = zod.object({
+  id: zod.number(),
+  alunoId: zod.number(),
+  turmaId: zod.number(),
+  percentualFaltas: zod.number(),
+  dataNotificacao: zod.string().nullish(),
+  status: zod.string(),
+  observacaoSecretaria: zod.string().nullish(),
+  responsavel: zod.string(),
+  motivoCancelamento: zod.string().nullish(),
+  dataDecisaoAluno: zod.string().nullish(),
+  nomeCoordinadora: zod.string().nullish(),
+  dataAssinatura: zod.string().nullish(),
+  createdAt: zod.string(),
+  alunoNome: zod.string(),
+  alunoCurso: zod.string(),
+  alunoMatricula: zod.string(),
+  alunoValorMensalidade: zod.number(),
+  disciplinaNome: zod.string(),
+  periodo: zod.string(),
+  disciplinas: zod.array(
+    zod.object({
+      disciplinaNome: zod.string(),
+      totalAulas: zod.number(),
+      faltas: zod.number(),
+      percentualFaltas: zod.number(),
+    }),
+  ),
+  timeline: zod.array(
+    zod.object({
+      id: zod.number(),
+      retencaoId: zod.number(),
+      acao: zod.string(),
+      observacao: zod.string().nullish(),
+      realizadoPor: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
 });
 
 /**

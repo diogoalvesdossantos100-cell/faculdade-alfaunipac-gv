@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AcaoRetencaoBody,
   Aluno,
   AlunoDetalhado,
   BapDetalhado,
@@ -65,6 +66,7 @@ import type {
   Retencao,
   RetencaoAuditLog,
   RetencaoDetalhada,
+  RetencaoDetalhadaCompleta,
   SaveChamadaBody,
   SaveChamadaResponse,
   Turma,
@@ -2163,6 +2165,93 @@ export function useListRetencao<
 }
 
 /**
+ * @summary Get detailed retention record with student and disciplinas
+ */
+export const getGetRetencaoDetalheUrl = (id: number) => {
+  return `/api/retencao/${id}`;
+};
+
+export const getRetencaoDetalhe = async (
+  id: number,
+  options?: RequestInit,
+): Promise<RetencaoDetalhadaCompleta> => {
+  return customFetch<RetencaoDetalhadaCompleta>(getGetRetencaoDetalheUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRetencaoDetalheQueryKey = (id: number) => {
+  return [`/api/retencao/${id}`] as const;
+};
+
+export const getGetRetencaoDetalheQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRetencaoDetalhe>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRetencaoDetalhe>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRetencaoDetalheQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRetencaoDetalhe>>
+  > = ({ signal }) => getRetencaoDetalhe(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRetencaoDetalhe>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRetencaoDetalheQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRetencaoDetalhe>>
+>;
+export type GetRetencaoDetalheQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get detailed retention record with student and disciplinas
+ */
+
+export function useGetRetencaoDetalhe<
+  TData = Awaited<ReturnType<typeof getRetencaoDetalhe>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRetencaoDetalhe>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRetencaoDetalheQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Update retention record status
  */
 export const getUpdateRetencaoUrl = (id: number) => {
@@ -2247,6 +2336,96 @@ export const useUpdateRetencao = <
   TContext
 > => {
   return useMutation(getUpdateRetencaoMutationOptions(options));
+};
+
+/**
+ * @summary Execute a workflow action on a retention record
+ */
+export const getExecutarAcaoRetencaoUrl = (id: number) => {
+  return `/api/retencao/${id}/acao`;
+};
+
+export const executarAcaoRetencao = async (
+  id: number,
+  acaoRetencaoBody: AcaoRetencaoBody,
+  options?: RequestInit,
+): Promise<RetencaoDetalhadaCompleta> => {
+  return customFetch<RetencaoDetalhadaCompleta>(
+    getExecutarAcaoRetencaoUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(acaoRetencaoBody),
+    },
+  );
+};
+
+export const getExecutarAcaoRetencaoMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof executarAcaoRetencao>>,
+    TError,
+    { id: number; data: BodyType<AcaoRetencaoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof executarAcaoRetencao>>,
+  TError,
+  { id: number; data: BodyType<AcaoRetencaoBody> },
+  TContext
+> => {
+  const mutationKey = ["executarAcaoRetencao"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof executarAcaoRetencao>>,
+    { id: number; data: BodyType<AcaoRetencaoBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return executarAcaoRetencao(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ExecutarAcaoRetencaoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof executarAcaoRetencao>>
+>;
+export type ExecutarAcaoRetencaoMutationBody = BodyType<AcaoRetencaoBody>;
+export type ExecutarAcaoRetencaoMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Execute a workflow action on a retention record
+ */
+export const useExecutarAcaoRetencao = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof executarAcaoRetencao>>,
+    TError,
+    { id: number; data: BodyType<AcaoRetencaoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof executarAcaoRetencao>>,
+  TError,
+  { id: number; data: BodyType<AcaoRetencaoBody> },
+  TContext
+> => {
+  return useMutation(getExecutarAcaoRetencaoMutationOptions(options));
 };
 
 /**

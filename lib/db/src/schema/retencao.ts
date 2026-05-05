@@ -10,8 +10,13 @@ export const retencaoTable = pgTable("retencao", {
   turmaId: integer("turma_id").notNull().references(() => turmasTable.id),
   percentualFaltas: numeric("percentual_faltas", { precision: 5, scale: 2 }).notNull(),
   dataNotificacao: text("data_notificacao"),
-  status: text("status").notNull().default("Em_Acompanhamento"),
+  status: text("status").notNull().default("Identificado"),
   observacaoSecretaria: text("observacao_secretaria"),
+  responsavel: text("responsavel").notNull().default("Secretaria"),
+  motivoCancelamento: text("motivo_cancelamento"),
+  dataDecisaoAluno: text("data_decisao_aluno"),
+  nomeCoordinadora: text("nome_coordinadora"),
+  dataAssinatura: text("data_assinatura"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

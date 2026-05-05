@@ -9,7 +9,7 @@ Full-stack SaaS academic management system for Faculdade AlfaUnipac (Governador 
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env vars: `DATABASE_URL`, `SESSION_SECRET`
-- Seed credentials: `admin@alfaunipac.com / admin123`, `coordenador@alfaunipac.com / coord123`, `secretaria@alfaunipac.com / sec123`
+- Seed credentials: `admin@alfaunipac.com / admin123`, `coordenador@alfaunipac.com / coord123`, `secretaria@alfaunipac.com / sec123`, `retencao@alfaunipac.com / ret123`
 
 ## Stack
 
@@ -39,7 +39,9 @@ Full-stack SaaS academic management system for Faculdade AlfaUnipac (Governador 
 
 - Contract-first API: OpenAPI spec drives code generation for both client hooks and Zod validators; backend and frontend stay in sync automatically
 - JWT stored in localStorage (not HttpOnly cookie) — acceptable for internal university tool; API uses `Authorization: Bearer` header via custom-fetch.ts
-- Business rule: >25% absences → auto-flag retention on chamada save; approving a document auto-justifies chamadas in the document's date range
+- Business rule: >25% absences → auto-flag retention on chamada save (status: Identificado, responsavel: Secretaria); approving a document auto-justifies chamadas in the document's date range
+- Retenção state machine: TRANSITIONS map in `retencao.ts` enforces valid transitions per role; `remover_bap` auto-deletes the student's BAP row for the current month
+- `lib/api-client-react/src/index.ts` must NOT export `./generated/api.schemas` — orval zod mode only generates `api.ts`
 - All routes prefixed `/api` and routed through the shared reverse proxy; frontend uses relative URLs
 
 ## Product
@@ -47,7 +49,7 @@ Full-stack SaaS academic management system for Faculdade AlfaUnipac (Governador 
 - **Dashboard**: KPI cards (total alunos, turmas, retention flags, recent attendance)
 - **Alunos**: list/search/filter students; detail view with frequency % and documents
 - **Frequência**: take daily attendance per turma; pre-fills from existing chamadas; auto-flags retention >25%
-- **Retenção**: list students at risk; notify, regularize, or approve for failure; audit timeline per student
+- **Retenção**: full 14-status workflow (Identificado→Encaminhado→Em_Contato→Aguardando_Resposta→[Retorno_Confirmado/Reintegrado or Cancelamento_Solicitado→Formulario→Aguardando_Assinatura→Assinado→Enviado_CRM→Removido_BAP→HBS_Notificado→Encerrado]); role-based actions (Secretaria/Retencao/Coordenador); stepper UI, timeline audit log, detail modal with per-disciplina falta breakdown
 - **Documentos**: upload/approve/reject academic documents; auto-justifies absences on approval
 - **BAP**: generate monthly billing list per course; view history
 - **Relatórios**: five report tabs — absences by student, absences by discipline, retention, documents, monthly summary

@@ -28,6 +28,7 @@ export const UserRole = {
   Admin: "Admin",
   Coordenador: "Coordenador",
   Secretaria: "Secretaria",
+  Retencao: "Retencao",
 } as const;
 
 export interface User {
@@ -334,9 +335,20 @@ export type RetencaoStatus =
   (typeof RetencaoStatus)[keyof typeof RetencaoStatus];
 
 export const RetencaoStatus = {
-  Em_Acompanhamento: "Em_Acompanhamento",
-  Regularizado: "Regularizado",
-  Reprovado_Faltas: "Reprovado_Faltas",
+  Identificado: "Identificado",
+  Encaminhado: "Encaminhado",
+  Em_Contato: "Em_Contato",
+  Aguardando_Resposta: "Aguardando_Resposta",
+  Retorno_Confirmado: "Retorno_Confirmado",
+  Cancelamento_Solicitado: "Cancelamento_Solicitado",
+  Formulario_Preenchido: "Formulario_Preenchido",
+  Aguardando_Assinatura: "Aguardando_Assinatura",
+  Assinado: "Assinado",
+  Enviado_CRM: "Enviado_CRM",
+  Removido_BAP: "Removido_BAP",
+  HBS_Notificado: "HBS_Notificado",
+  Encerrado: "Encerrado",
+  Reintegrado: "Reintegrado",
 } as const;
 
 export interface Retencao {
@@ -349,6 +361,15 @@ export interface Retencao {
   status: RetencaoStatus;
   /** @nullable */
   observacaoSecretaria?: string | null;
+  responsavel: string;
+  /** @nullable */
+  motivoCancelamento?: string | null;
+  /** @nullable */
+  dataDecisaoAluno?: string | null;
+  /** @nullable */
+  nomeCoordinadora?: string | null;
+  /** @nullable */
+  dataAssinatura?: string | null;
   createdAt: string;
 }
 
@@ -356,9 +377,20 @@ export type RetencaoDetalhadaStatus =
   (typeof RetencaoDetalhadaStatus)[keyof typeof RetencaoDetalhadaStatus];
 
 export const RetencaoDetalhadaStatus = {
-  Em_Acompanhamento: "Em_Acompanhamento",
-  Regularizado: "Regularizado",
-  Reprovado_Faltas: "Reprovado_Faltas",
+  Identificado: "Identificado",
+  Encaminhado: "Encaminhado",
+  Em_Contato: "Em_Contato",
+  Aguardando_Resposta: "Aguardando_Resposta",
+  Retorno_Confirmado: "Retorno_Confirmado",
+  Cancelamento_Solicitado: "Cancelamento_Solicitado",
+  Formulario_Preenchido: "Formulario_Preenchido",
+  Aguardando_Assinatura: "Aguardando_Assinatura",
+  Assinado: "Assinado",
+  Enviado_CRM: "Enviado_CRM",
+  Removido_BAP: "Removido_BAP",
+  HBS_Notificado: "HBS_Notificado",
+  Encerrado: "Encerrado",
+  Reintegrado: "Reintegrado",
 } as const;
 
 export interface RetencaoDetalhada {
@@ -371,29 +403,20 @@ export interface RetencaoDetalhada {
   status: RetencaoDetalhadaStatus;
   /** @nullable */
   observacaoSecretaria?: string | null;
+  responsavel: string;
   createdAt: string;
   alunoNome: string;
   alunoCurso: string;
+  alunoMatricula: string;
   disciplinaNome: string;
   periodo: string;
 }
 
-export type UpdateRetencaoBodyStatus =
-  (typeof UpdateRetencaoBodyStatus)[keyof typeof UpdateRetencaoBodyStatus];
-
-export const UpdateRetencaoBodyStatus = {
-  Em_Acompanhamento: "Em_Acompanhamento",
-  Regularizado: "Regularizado",
-  Reprovado_Faltas: "Reprovado_Faltas",
-} as const;
-
-export interface UpdateRetencaoBody {
-  status?: UpdateRetencaoBodyStatus;
-  observacaoSecretaria?: string;
-}
-
-export interface NotificarAlunoBody {
-  observacao: string;
+export interface DisciplinaFaltasItem {
+  disciplinaNome: string;
+  totalAulas: number;
+  faltas: number;
+  percentualFaltas: number;
 }
 
 export interface RetencaoAuditLog {
@@ -405,6 +428,74 @@ export interface RetencaoAuditLog {
   /** @nullable */
   realizadoPor?: string | null;
   createdAt: string;
+}
+
+export interface RetencaoDetalhadaCompleta {
+  id: number;
+  alunoId: number;
+  turmaId: number;
+  percentualFaltas: number;
+  /** @nullable */
+  dataNotificacao?: string | null;
+  status: string;
+  /** @nullable */
+  observacaoSecretaria?: string | null;
+  responsavel: string;
+  /** @nullable */
+  motivoCancelamento?: string | null;
+  /** @nullable */
+  dataDecisaoAluno?: string | null;
+  /** @nullable */
+  nomeCoordinadora?: string | null;
+  /** @nullable */
+  dataAssinatura?: string | null;
+  createdAt: string;
+  alunoNome: string;
+  alunoCurso: string;
+  alunoMatricula: string;
+  alunoValorMensalidade: number;
+  disciplinaNome: string;
+  periodo: string;
+  disciplinas: DisciplinaFaltasItem[];
+  timeline: RetencaoAuditLog[];
+}
+
+export interface UpdateRetencaoBody {
+  status?: string;
+  observacaoSecretaria?: string;
+}
+
+export type AcaoRetencaoBodyAcao =
+  (typeof AcaoRetencaoBodyAcao)[keyof typeof AcaoRetencaoBodyAcao];
+
+export const AcaoRetencaoBodyAcao = {
+  encaminhar: "encaminhar",
+  registrar_contato: "registrar_contato",
+  aguardar_resposta: "aguardar_resposta",
+  retorno_confirmado: "retorno_confirmado",
+  cancelamento_solicitado: "cancelamento_solicitado",
+  preencher_formulario: "preencher_formulario",
+  encaminhar_assinatura: "encaminhar_assinatura",
+  assinar: "assinar",
+  retirar_crm: "retirar_crm",
+  remover_bap: "remover_bap",
+  notificar_hbs: "notificar_hbs",
+  encerrar: "encerrar",
+  reintegrar: "reintegrar",
+} as const;
+
+export interface AcaoRetencaoBody {
+  acao: AcaoRetencaoBodyAcao;
+  /** @nullable */
+  observacao?: string | null;
+  /** @nullable */
+  motivoCancelamento?: string | null;
+  /** @nullable */
+  nomeCoordinadora?: string | null;
+}
+
+export interface NotificarAlunoBody {
+  observacao: string;
 }
 
 export type DocumentoDetalhadoTipo =

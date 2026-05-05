@@ -630,6 +630,31 @@ paths:
                   $ref: "#/components/schemas/RetencaoDetalhada"
 
   /retencao/{id}:
+    get:
+      operationId: getRetencaoDetalhe
+      tags: [retencao]
+      summary: Get detailed retention record with student and disciplinas
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Detailed retention record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetencaoDetalhadaCompleta"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     patch:
       operationId: updateRetencao
       tags: [retencao]
@@ -655,6 +680,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Retencao"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /retencao/{id}/acao:
+    post:
+      operationId: executarAcaoRetencao
+      tags: [retencao]
+      summary: Execute a workflow action on a retention record
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcaoRetencaoBody"
+      responses:
+        "200":
+          description: Updated retention record after action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetencaoDetalhadaCompleta"
+        "400":
+          description: Invalid action or transition not allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Not found
           content:
@@ -1183,7 +1247,7 @@ components:
           type: string
         role:
           type: string
-          enum: [Admin, Coordenador, Secretaria]
+          enum: [Admin, Coordenador, Secretaria, Retencao]
       required:
         - id
         - email
@@ -1632,8 +1696,32 @@ components:
           type: ["string", "null"]
         status:
           type: string
-          enum: [Em_Acompanhamento, Regularizado, Reprovado_Faltas]
+          enum:
+            - Identificado
+            - Encaminhado
+            - Em_Contato
+            - Aguardando_Resposta
+            - Retorno_Confirmado
+            - Cancelamento_Solicitado
+            - Formulario_Preenchido
+            - Aguardando_Assinatura
+            - Assinado
+            - Enviado_CRM
+            - Removido_BAP
+            - HBS_Notificado
+            - Encerrado
+            - Reintegrado
         observacaoSecretaria:
+          type: ["string", "null"]
+        responsavel:
+          type: string
+        motivoCancelamento:
+          type: ["string", "null"]
+        dataDecisaoAluno:
+          type: ["string", "null"]
+        nomeCoordinadora:
+          type: ["string", "null"]
+        dataAssinatura:
           type: ["string", "null"]
         createdAt:
           type: string
@@ -1643,6 +1731,7 @@ components:
         - turmaId
         - percentualFaltas
         - status
+        - responsavel
         - createdAt
 
     RetencaoDetalhada:
@@ -1660,14 +1749,32 @@ components:
           type: ["string", "null"]
         status:
           type: string
-          enum: [Em_Acompanhamento, Regularizado, Reprovado_Faltas]
+          enum:
+            - Identificado
+            - Encaminhado
+            - Em_Contato
+            - Aguardando_Resposta
+            - Retorno_Confirmado
+            - Cancelamento_Solicitado
+            - Formulario_Preenchido
+            - Aguardando_Assinatura
+            - Assinado
+            - Enviado_CRM
+            - Removido_BAP
+            - HBS_Notificado
+            - Encerrado
+            - Reintegrado
         observacaoSecretaria:
           type: ["string", "null"]
+        responsavel:
+          type: string
         createdAt:
           type: string
         alunoNome:
           type: string
         alunoCurso:
+          type: string
+        alunoMatricula:
           type: string
         disciplinaNome:
           type: string
@@ -1679,20 +1786,132 @@ components:
         - turmaId
         - percentualFaltas
         - status
+        - responsavel
         - createdAt
         - alunoNome
         - alunoCurso
+        - alunoMatricula
         - disciplinaNome
         - periodo
+
+    DisciplinaFaltasItem:
+      type: object
+      properties:
+        disciplinaNome:
+          type: string
+        totalAulas:
+          type: integer
+        faltas:
+          type: integer
+        percentualFaltas:
+          type: number
+      required:
+        - disciplinaNome
+        - totalAulas
+        - faltas
+        - percentualFaltas
+
+    RetencaoDetalhadaCompleta:
+      type: object
+      properties:
+        id:
+          type: integer
+        alunoId:
+          type: integer
+        turmaId:
+          type: integer
+        percentualFaltas:
+          type: number
+        dataNotificacao:
+          type: ["string", "null"]
+        status:
+          type: string
+        observacaoSecretaria:
+          type: ["string", "null"]
+        responsavel:
+          type: string
+        motivoCancelamento:
+          type: ["string", "null"]
+        dataDecisaoAluno:
+          type: ["string", "null"]
+        nomeCoordinadora:
+          type: ["string", "null"]
+        dataAssinatura:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        alunoNome:
+          type: string
+        alunoCurso:
+          type: string
+        alunoMatricula:
+          type: string
+        alunoValorMensalidade:
+          type: number
+        disciplinaNome:
+          type: string
+        periodo:
+          type: string
+        disciplinas:
+          type: array
+          items:
+            $ref: "#/components/schemas/DisciplinaFaltasItem"
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetencaoAuditLog"
+      required:
+        - id
+        - alunoId
+        - turmaId
+        - percentualFaltas
+        - status
+        - responsavel
+        - createdAt
+        - alunoNome
+        - alunoCurso
+        - alunoMatricula
+        - alunoValorMensalidade
+        - disciplinaNome
+        - periodo
+        - disciplinas
+        - timeline
 
     UpdateRetencaoBody:
       type: object
       properties:
         status:
           type: string
-          enum: [Em_Acompanhamento, Regularizado, Reprovado_Faltas]
         observacaoSecretaria:
           type: string
+
+    AcaoRetencaoBody:
+      type: object
+      properties:
+        acao:
+          type: string
+          enum:
+            - encaminhar
+            - registrar_contato
+            - aguardar_resposta
+            - retorno_confirmado
+            - cancelamento_solicitado
+            - preencher_formulario
+            - encaminhar_assinatura
+            - assinar
+            - retirar_crm
+            - remover_bap
+            - notificar_hbs
+            - encerrar
+            - reintegrar
+        observacao:
+          type: ["string", "null"]
+        motivoCancelamento:
+          type: ["string", "null"]
+        nomeCoordinadora:
+          type: ["string", "null"]
+      required:
+        - acao
 
     NotificarAlunoBody:
       type: object
