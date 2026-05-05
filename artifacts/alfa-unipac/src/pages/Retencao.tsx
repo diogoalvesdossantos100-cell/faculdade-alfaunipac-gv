@@ -26,8 +26,10 @@ import {
   Pen,
   ArrowRight,
   ClipboardList,
+  FileDown,
 } from "lucide-react";
 import { toast } from "sonner";
+import { exportFormularioCancelamentoPdf } from "../utils/export";
 
 // ── constants ──────────────────────────────────────────────────────────────
 
@@ -557,11 +559,36 @@ function DetailModal({
               </div>
             )}
 
-            {/* Motivo cancelamento */}
+            {/* Motivo cancelamento + botão PDF formulário */}
             {detalhe.motivoCancelamento && (
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-                <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-1">Motivo do Cancelamento</p>
-                <p className="text-sm text-orange-800">{detalhe.motivoCancelamento}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-1">Motivo do Cancelamento</p>
+                    <p className="text-sm text-orange-800">{detalhe.motivoCancelamento}</p>
+                  </div>
+                  {["Formulario_Preenchido","Aguardando_Assinatura","Assinado","Enviado_CRM","Removido_BAP","HBS_Notificado","Encerrado"].includes(detalhe.status) && (
+                    <button
+                      onClick={() => {
+                        exportFormularioCancelamentoPdf({
+                          alunoNome: detalhe.alunoNome,
+                          alunoMatricula: detalhe.alunoMatricula,
+                          alunoCurso: detalhe.alunoCurso,
+                          motivoCancelamento: detalhe.motivoCancelamento,
+                          dataDecisaoAluno: detalhe.dataDecisaoAluno,
+                          nomeCoordinadora: detalhe.nomeCoordinadora,
+                          dataAssinatura: detalhe.dataAssinatura,
+                        });
+                        toast.success("Formulário gerado.");
+                      }}
+                      className="flex items-center gap-1.5 flex-shrink-0 bg-white border border-orange-200 text-orange-700 hover:bg-orange-100 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                      title="Baixar formulário de cancelamento em PDF"
+                    >
+                      <FileDown className="w-3.5 h-3.5" />
+                      PDF
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 

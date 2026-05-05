@@ -6,8 +6,9 @@ import {
   useGetBapHistorico,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Receipt, RefreshCw, X } from "lucide-react";
+import { Receipt, RefreshCw, FileDown, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
+import { exportBapPdf, exportBapXlsx } from "../utils/export";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -49,6 +50,18 @@ export default function BAP() {
     }
   };
 
+  const handleExportPdf = () => {
+    if (!bapList?.length) { toast.error("Gere o BAP antes de exportar."); return; }
+    exportBapPdf(bapList.map((r) => ({ alunoNome: r.alunoNome, curso: r.curso, valorMensalidade: r.valorMensalidade })), mes, ano);
+    toast.success("PDF gerado com sucesso.");
+  };
+
+  const handleExportXlsx = () => {
+    if (!bapList?.length) { toast.error("Gere o BAP antes de exportar."); return; }
+    exportBapXlsx(bapList.map((r) => ({ alunoNome: r.alunoNome, curso: r.curso, valorMensalidade: r.valorMensalidade })), mes, ano);
+    toast.success("Planilha gerada com sucesso.");
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -88,6 +101,26 @@ export default function BAP() {
           <RefreshCw className={`w-4 h-4 ${generateMutation.isPending ? "animate-spin" : ""}`} />
           {generateMutation.isPending ? "Gerando..." : "Gerar BAP"}
         </button>
+        <div className="flex gap-2 ml-auto">
+          <button
+            onClick={handleExportPdf}
+            disabled={!bapList?.length}
+            className="flex items-center gap-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-sm px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40"
+            title="Exportar PDF no formato oficial"
+          >
+            <FileDown className="w-4 h-4 text-red-500" />
+            PDF
+          </button>
+          <button
+            onClick={handleExportXlsx}
+            disabled={!bapList?.length}
+            className="flex items-center gap-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-sm px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40"
+            title="Exportar planilha Excel"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-green-600" />
+            Excel
+          </button>
+        </div>
       </div>
 
       {/* BAP Table */}

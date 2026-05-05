@@ -11,7 +11,15 @@ import {
   getGetRelatorioDocumentosQueryKey,
   getGetRelatorioResumoMensalQueryKey,
 } from "@workspace/api-client-react";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, FileDown, FileSpreadsheet } from "lucide-react";
+import {
+  exportFaltasAlunoPdf, exportFaltasAlunoXlsx,
+  exportFaltasDisciplinaPdf, exportFaltasDisciplinaXlsx,
+  exportRetencaoPdf, exportRetencaoXlsx,
+  exportDocumentosPdf, exportDocumentosXlsx,
+  exportMensalPdf, exportMensalXlsx,
+} from "../utils/export";
+import { toast } from "sonner";
 
 const CURSOS = ["Administração", "Enfermagem", "Farmácia", "Fisioterapia", "Nutrição"];
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -23,6 +31,25 @@ function formatDate(d: string | undefined | null): string {
   if (!d) return "—";
   const [y, m, day] = d.split("-");
   return `${day}/${m}/${y}`;
+}
+
+function ExportButtons({ onPdf, onXlsx, disabled }: { onPdf: () => void; onXlsx: () => void; disabled?: boolean }) {
+  return (
+    <div className="flex gap-2">
+      <button
+        onClick={() => { if (!disabled) onPdf(); else toast.error("Nenhum dado para exportar."); }}
+        className={`flex items-center gap-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs px-3 py-2 rounded-lg transition-colors ${disabled ? "opacity-40" : ""}`}
+      >
+        <FileDown className="w-3.5 h-3.5 text-red-500" /> PDF
+      </button>
+      <button
+        onClick={() => { if (!disabled) onXlsx(); else toast.error("Nenhum dado para exportar."); }}
+        className={`flex items-center gap-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs px-3 py-2 rounded-lg transition-colors ${disabled ? "opacity-40" : ""}`}
+      >
+        <FileSpreadsheet className="w-3.5 h-3.5 text-green-600" /> Excel
+      </button>
+    </div>
+  );
 }
 
 export default function Relatorios() {
@@ -78,7 +105,7 @@ export default function Relatorios() {
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Filters + Export */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm mb-5 flex flex-wrap gap-3 items-end">
         {(tab === "faltas-aluno" || tab === "faltas-disciplina" || tab === "retencao") && (
           <div>
@@ -106,9 +133,11 @@ export default function Relatorios() {
             <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
             <select value={statusFiltro} onChange={(e) => setStatusFiltro(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-300">
               <option value="">Todos</option>
-              <option value="Em_Acompanhamento">Em Acompanhamento</option>
-              <option value="Regularizado">Regularizado</option>
-              <option value="Reprovado_Faltas">Reprovado por Faltas</option>
+              <option value="Identificado">Identificado</option>
+              <option value="Encaminhado">Encaminhado</option>
+              <option value="Em_Contato">Em Contato</option>
+              <option value="Encerrado">Encerrado</option>
+              <option value="Reintegrado">Reintegrado</option>
             </select>
           </div>
         )}
@@ -128,6 +157,45 @@ export default function Relatorios() {
             </div>
           </>
         )}
+
+        {/* Export buttons aligned right */}
+        <div className="ml-auto flex items-end">
+          {tab === "faltas-aluno" && (
+            <ExportButtons
+              disabled={!faltasAluno?.length}
+              onPdf={() => { exportFaltasAlunoPdf(faltasAluno!); toast.success("PDF gerado."); }}
+              onXlsx={() => { exportFaltasAlunoXlsx(faltasAluno!); toast.success("Excel gerado."); }}
+            />
+          )}
+          {tab === "faltas-disciplina" && (
+            <ExportButtons
+              disabled={!faltasDisc?.length}
+              onPdf={() => { exportFaltasDisciplinaPdf(faltasDisc!); toast.success("PDF gerado."); }}
+              onXlsx={() => { exportFaltasDisciplinaXlsx(faltasDisc!); toast.success("Excel gerado."); }}
+            />
+          )}
+          {tab === "retencao" && (
+            <ExportButtons
+              disabled={!retencao?.length}
+              onPdf={() => { exportRetencaoPdf(retencao!.map((r) => ({ ...r, percentualFaltas: r.percentualFaltas ?? 0, dataNotificacao: r.dataNotificacao ?? null }))); toast.success("PDF gerado."); }}
+              onXlsx={() => { exportRetencaoXlsx(retencao!.map((r) => ({ ...r, percentualFaltas: r.percentualFaltas ?? 0, dataNotificacao: r.dataNotificacao ?? null }))); toast.success("Excel gerado."); }}
+            />
+          )}
+          {tab === "documentos" && (
+            <ExportButtons
+              disabled={!docs?.length}
+              onPdf={() => { exportDocumentosPdf(docs!.map((r) => ({ ...r, dataEntrega: r.dataEntrega ?? null, periodo: r.periodo ?? "" }))); toast.success("PDF gerado."); }}
+              onXlsx={() => { exportDocumentosXlsx(docs!.map((r) => ({ ...r, dataEntrega: r.dataEntrega ?? null, periodo: r.periodo ?? "" }))); toast.success("Excel gerado."); }}
+            />
+          )}
+          {tab === "mensal" && (
+            <ExportButtons
+              disabled={!mensal?.length}
+              onPdf={() => { exportMensalPdf(mensal!, mes, ano); toast.success("PDF gerado."); }}
+              onXlsx={() => { exportMensalXlsx(mensal!, mes, ano); toast.success("Excel gerado."); }}
+            />
+          )}
+        </div>
       </div>
 
       {/* Table area */}
@@ -155,8 +223,8 @@ export default function Relatorios() {
                     <td className="px-5 py-3 text-center text-slate-600">{r.totalAulas}</td>
                     <td className="px-5 py-3 text-center text-slate-600">{r.faltas}</td>
                     <td className="px-5 py-3 text-center">
-                      <span className={`font-semibold ${r.percentualFaltas > 25 ? "text-red-600" : "text-green-700"}`}>
-                        {r.percentualFaltas?.toFixed(1)}%
+                      <span className={`font-semibold ${(r.percentualFaltas ?? 0) > 25 ? "text-red-600" : "text-green-700"}`}>
+                        {(r.percentualFaltas ?? 0).toFixed(1)}%
                       </span>
                     </td>
                     <td className="px-5 py-3 text-center">
@@ -190,12 +258,12 @@ export default function Relatorios() {
                     <td className="px-5 py-3 text-slate-600">{r.periodo}</td>
                     <td className="px-5 py-3 text-center text-slate-600">{r.totalAlunos}</td>
                     <td className="px-5 py-3 text-center">
-                      <span className={`font-semibold ${r.mediaPresenca < 75 ? "text-red-600" : "text-green-700"}`}>
-                        {r.mediaPresenca?.toFixed(1)}%
+                      <span className={`font-semibold ${(r.mediaPresenca ?? 0) < 75 ? "text-red-600" : "text-green-700"}`}>
+                        {(r.mediaPresenca ?? 0).toFixed(1)}%
                       </span>
                     </td>
                     <td className="px-5 py-3 text-center">
-                      {r.alunosEmRetencao > 0 ? (
+                      {(r.alunosEmRetencao ?? 0) > 0 ? (
                         <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">{r.alunosEmRetencao}</span>
                       ) : (
                         <span className="text-xs text-slate-400">0</span>
@@ -227,8 +295,8 @@ export default function Relatorios() {
                     <td className="px-5 py-3 font-medium text-slate-800">{r.alunoNome}</td>
                     <td className="px-5 py-3 text-slate-500">{r.curso}</td>
                     <td className="px-5 py-3 text-slate-600">{r.disciplinaNome}</td>
-                    <td className="px-5 py-3 text-center font-bold text-red-600">{r.percentualFaltas?.toFixed(1)}%</td>
-                    <td className="px-5 py-3 text-slate-600">{r.status?.replace(/_/g, " ")}</td>
+                    <td className="px-5 py-3 text-center font-bold text-red-600">{(r.percentualFaltas ?? 0).toFixed(1)}%</td>
+                    <td className="px-5 py-3 text-slate-600">{(r.status ?? "").replace(/_/g, " ")}</td>
                     <td className="px-5 py-3 text-slate-500">{formatDate(r.dataNotificacao)}</td>
                   </tr>
                 ))}
@@ -255,7 +323,7 @@ export default function Relatorios() {
                   <tr key={i} className="hover:bg-slate-50">
                     <td className="px-5 py-3 font-medium text-slate-800">{r.alunoNome}</td>
                     <td className="px-5 py-3 text-slate-500">{r.curso}</td>
-                    <td className="px-5 py-3 text-slate-600">{r.tipo?.replace(/_/g, " ")}</td>
+                    <td className="px-5 py-3 text-slate-600">{(r.tipo ?? "").replace(/_/g, " ")}</td>
                     <td className="px-5 py-3 text-slate-500">{formatDate(r.dataEntrega)}</td>
                     <td className="px-5 py-3 text-slate-500">{r.periodo}</td>
                     <td className="px-5 py-3">
@@ -288,12 +356,12 @@ export default function Relatorios() {
                     <td className="px-5 py-3 font-semibold text-slate-800">{r.curso}</td>
                     <td className="px-5 py-3 text-center text-slate-600">{r.totalAlunos}</td>
                     <td className="px-5 py-3 text-center">
-                      <span className={`font-semibold ${r.mediaPresenca < 75 ? "text-red-600" : "text-green-700"}`}>
-                        {r.mediaPresenca?.toFixed(1)}%
+                      <span className={`font-semibold ${(r.mediaPresenca ?? 0) < 75 ? "text-red-600" : "text-green-700"}`}>
+                        {(r.mediaPresenca ?? 0).toFixed(1)}%
                       </span>
                     </td>
                     <td className="px-5 py-3 text-center">
-                      {r.alunosEmRetencao > 0 ? (
+                      {(r.alunosEmRetencao ?? 0) > 0 ? (
                         <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full font-semibold">{r.alunosEmRetencao}</span>
                       ) : (
                         <span className="text-slate-400 text-xs">0</span>

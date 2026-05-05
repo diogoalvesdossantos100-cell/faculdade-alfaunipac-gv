@@ -10,11 +10,13 @@ import documentosRouter from "./documentos";
 import bapRouter from "./bap";
 import relatoriosRouter from "./relatorios";
 import dashboardRouter from "./dashboard";
+import importsRouter from "./imports";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(importsRouter);
 router.use(alunosRouter);
 router.use(disciplinasRouter);
 router.use(turmasRouter);
