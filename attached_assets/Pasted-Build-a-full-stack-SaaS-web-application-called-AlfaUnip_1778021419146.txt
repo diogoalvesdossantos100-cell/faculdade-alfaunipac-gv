@@ -1,0 +1,313 @@
+Build a full-stack SaaS web application called AlfaUnipac GV — 
+Sistema de Gestão Acadêmica for Faculdade AlfaUnipac, campus 
+Governador Valadares/MG, Brazil.
+
+---
+
+## TECH STACK
+- Backend: Python + FastAPI
+- Frontend: React + Vite + Tailwind CSS
+- Database: PostgreSQL (Replit native)
+- Auth: JWT with role-based access
+- File export: openpyxl (Excel) + reportlab (PDF)
+- All UI text in Portuguese BR. Dates DD/MM/YYYY. 
+  Currency R$ X.XXX,XX
+
+---
+
+## ROLES
+Secretaria: full access to all modules.
+Retencao: access only to Retenção module.
+Coordenacao: access only to sign cancellation documents 
+inside Retenção module.
+
+Seed users:
+- admin@alfaunipac.com / admin123 (Secretaria)
+- retencao@alfaunipac.com / retencao123 (Retencao)
+- coord@alfaunipac.com / coord123 (Coordenacao)
+
+---
+
+## DATA MODEL
+
+Curso (fixed list):
+Administração, Enfermagem, Farmácia, Fisioterapia, Nutrição
+
+Aluno:
+id, nome_completo, matricula, curso, turno 
+(Matutino/Vespertino/Noturno), status 
+(Ativo/Em_Retencao/Cancelado/Trancado), 
+valor_mensalidade (default 979.00), 
+financiador (default "Hospital Bom Samaritano")
+
+Disciplina:
+id, codigo (D1/D2/D3/D4...), nome, curso, semestre, 
+carga_horaria_total
+
+Chamada:
+id, aluno_id, disciplina_id, data, presente (bool), 
+justificada (bool), tipo_justificativa 
+(null/Atestado/Declaracao_Trabalho/Licenca_Maternidade)
+
+Documento:
+id, aluno_id, tipo, data_entrega, data_inicio, data_fim, 
+status (Pendente/Aprovado/Rejeitado)
+
+Retencao:
+id, aluno_id, status (see full list below), 
+responsavel_atual, created_at, updated_at, observacoes, 
+formulario_pdf_url
+
+BAP_Mensal:
+id, mes, ano, aluno_id, curso, valor_mensalidade, 
+ativo (bool)
+
+---
+
+## IMPORTAÇÃO DE FREQUÊNCIA — EXCEL/SHAREPOINT
+
+The frequency spreadsheet has one sheet per course. Structure:
+- Row 1: "Curso: [NOME DO CURSO]"
+- Row 2: "Tutor:"
+- Row 3: Semester label "2026/1"
+- Row 4: Discipline group headers spanning multiple columns 
+  (D1, D2, D3, D4...) — each group covers several class dates
+- Row 5: Individual date columns under each discipline 
+  (format DD/MM) plus "TOTAL DE FALTAS" as last column
+- Row 6+: Student data — Nº Matrícula, Nome, 
+  then one cell per class date ("f" = absent, "." = present)
+
+Import logic:
+1. Read each sheet tab = one course
+2. Parse discipline groups from row 4 (D1, D2, D3, D4)
+3. Parse dates from row 5 — map each date column to its 
+   parent discipline group
+4. For each student row: read matricula, name, then for each 
+   date column read "f" (absent=true) or "." (absent=false)
+5. Upsert into Chamada table: if record exists for 
+   aluno+disciplina+data, update; if not, insert
+6. After import, recalculate % faltas per student per 
+   disciplina and flag anyone above 25% threshold 
+   into Retencao table with status "Identificado"
+
+Build TWO import methods:
+A) Manual upload button — user uploads .xlsx or .ods file 
+   directly in the system
+B) Microsoft 365 sync — "Conectar Microsoft 365" button 
+   that triggers OAuth2 login with institutional Microsoft 
+   account. After login, system stores the refresh token 
+   and uses Microsoft Graph API to read the SharePoint file 
+   automatically. Add a "Sincronizar agora" button and 
+   schedule automatic daily sync at 6am.
+   Graph API endpoint to use:
+   GET /me/drive/root:/path/to/file:/content
+   Accept: application/vnd.openxmlformats-officedocument
+   .spreadsheetml.sheet
+
+For Microsoft OAuth2 use these endpoints:
+- Auth: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+- Token: https://login.microsoftonline.com/common/oauth2/v2.0/token
+- Scopes: Files.Read, offline_access
+Store CLIENT_ID and CLIENT_SECRET in environment variables.
+
+---
+
+## NAVIGATION — 7 tabs in sidebar (navy #0A192F background, 
+cyan #00D4FF active accent)
+
+---
+
+## 1. DASHBOARD
+Cards: Total Alunos Ativos, Em Retenção (red), 
+Docs Pendentes (amber), Frequência Média %.
+Table: frequency % per course with mini progress bar, 
+count at risk, total students.
+Quick action buttons: Registrar Chamada, Gerar BAP, 
+Ver Retenção.
+
+---
+
+## 2. ALUNOS
+List with search by name or matricula, filter by 
+curso and status.
+Columns: Nome, Curso, Matrícula, Turno, Frequência %, 
+Status, button Ver.
+Bulk import via CSV/XLSX.
+Student detail page: personal data, frequency summary 
+per discipline, documents, retention history.
+
+---
+
+## 3. FREQUÊNCIA
+Select discipline + date → show full class roster as 
+card grid with P / F / J toggle buttons per student.
+P = presente (green), F = falta (red), 
+J = justificado (amber).
+Show running totals: presentes, faltas, justificados, 
+freq % of the class.
+Save button upserts all records.
+Also show frequency history per student as calendar 
+grid (green/red/amber per date).
+Automatic flag: after saving, if any student exceeds 
+25% absence threshold in any discipline, 
+auto-create Retencao record with status "Identificado".
+
+---
+
+## 4. RETENÇÃO
+
+### Roles and permissions
+Secretaria: identifies, forwards, fills cancellation 
+form, removes from BAP, notifies HBS, reintegrates.
+Retencao: contacts student, registers outcome, 
+collects signature, returns signed doc.
+Coordenacao: signs cancellation form inside system.
+
+### Full status flow (in order)
+1. Identificado — auto-flagged by system (>25% absences). 
+   Owner: Secretaria.
+2. Encaminhado — Secretaria sent to Retencao sector. 
+   Owner: Retencao.
+3. Em_Contato — Retencao contacted the student. 
+   Owner: Retencao.
+4. Aguardando_Resposta — waiting for student reply. 
+   Owner: Retencao.
+5a. Retorno_Confirmado — student decided to continue. 
+    Owner: Retencao → returns to Secretaria.
+5b. Cancelamento_Solicitado — student decided to leave. 
+    Owner: Retencao → returns to Secretaria.
+6. Formulario_Preenchido — Secretaria filled cancellation 
+   form and sent to Retencao for signature collection. 
+   Owner: Retencao.
+7. Aguardando_Assinatura — sent to Coordenacao Pedagogica. 
+   Owner: Coordenacao.
+8. Assinado — Coordenacao signed. Retencao returns signed 
+   doc to Secretaria. Owner: Secretaria.
+9. Enviado_CRM — Secretaria sent to cancellation sector 
+   to remove student from CRM. Owner: Secretaria.
+10. Removido_BAP — system automatically removes student 
+    from current month BAP list and generates alert: 
+    "Aluno [nome] removido da BAP de [mês/ano]. 
+    Notificar o Hospital Bom Samaritano."
+    Owner: automatic.
+11. HBS_Notificado — Secretaria informed Hospital 
+    Bom Samaritano. Owner: Secretaria.
+12. Encerrado — process complete.
+
+For path 5a (Retorno_Confirmado): 
+Secretaria reorients student, status returns to Ativo 
+in Aluno table. Retention record status = Reintegrado.
+
+### Main retention screen
+Top tabs: Todos / Secretaria / Retenção / 
+Coordenação / Encerrados.
+Each tab filters by current owner role.
+Table columns: Nome, Curso, % Faltas, Etapa atual, 
+Responsável, Data última ação, button Ver.
+Absence bar: orange 25–35%, red >35%.
+
+### Student detail panel
+Horizontal stepper showing all 12 stages with 
+current stage highlighted.
+Student data: nome, curso, matricula, valor mensalidade.
+Disciplines with absences: name, total aulas, 
+total faltas, %.
+Action timeline: who did what and when.
+Action buttons shown based on current status AND 
+logged-in role:
+- Secretaria sees: Encaminhar para Retenção / 
+  Preencher formulário / Retirar do CRM / 
+  Remover da BAP / Notificar HBS / Reintegrar aluno
+- Retencao sees: Registrar contato / 
+  Registrar resposta do aluno / 
+  Encaminhar para assinatura / 
+  Devolver documento assinado
+- Coordenacao sees: Assinar documento (opens modal 
+  showing full form for review before signing)
+
+### Cancellation form (auto-generated PDF)
+Generated when Secretaria clicks Preencher formulário.
+Fields: nome completo, CPF, matrícula, curso, 
+data da decisão, motivo declarado, nome da 
+coordenadora pedagógica, signature field, 
+data assinatura, carimbo institucional.
+PDF stored on student record. Status tracked: 
+Pendente / Assinado.
+
+### BAP auto-removal
+When status reaches Removido_BAP, system automatically 
+sets student ativo=false in BAP_Mensal for current month 
+and displays alert to Secretaria.
+
+### Summary cards at top
+Em acompanhamento (status 2–4), 
+Críticos >40% faltas, 
+Aguardando assinatura, 
+Encerrados no mês.
+
+---
+
+## 5. DOCUMENTOS
+Register documents per student: Atestado Médico, 
+Declaração de Trabalho, Licença Maternidade.
+Fields: student, type, period (start/end date), 
+date received, status.
+When Aprovado: automatically mark corresponding 
+absence records as justificada=true in Chamada table.
+Workflow: Pendente → Aprovado / Rejeitado.
+Alert badge on tab for pending documents.
+
+---
+
+## 6. LISTA BAP
+Monthly billing list for Hospital Bom Samaritano.
+Generate BAP for selected month/year pulling all 
+students with ativo=true in BAP_Mensal.
+Group by course. Display: sequence #, student name, 
+course, monthly fee R$ 979,00.
+Show total at bottom.
+
+Export to PDF matching official format:
+- Header: "GOVERNADOR VALADARES — [MÊS/ANO]"
+- Columns: #, ALUNO, CURSO, VALOR
+- Footer: "POR EXPRESSÃO DE VERDADE, ASSINO, VALIDO 
+  E DOU FÉ NA PRESENTE DECLARAÇÃO DE FREQUÊNCIA"
+  + "SECRETARIA DO POLO DE GOVERNADOR VALADARES"
+Export to XLSX same layout.
+BAP history: view all past months.
+
+---
+
+## 7. RELATÓRIOS
+- Faltas por aluno (period filter)
+- Faltas por disciplina
+- Relatório de retenção (students at risk with stage)
+- Documentos entregues
+- Resumo mensal por curso (attendance rate)
+- Cancelamentos e desligamentos
+All exportable as PDF and XLSX.
+
+---
+
+## SEED DATA
+Pre-load with these 5 courses and students from 
+the official March 2026 BAP list:
+Administração: 62 students
+Enfermagem: 189 students  
+Farmácia: 56 students
+Fisioterapia: 158 students
+Nutrição: 46 students
+All with valor_mensalidade = 979.00, 
+financiador = "Hospital Bom Samaritano", status = Ativo.
+Mark 3 students per course as Em_Retencao for demo.
+
+---
+
+## UX
+- Sidebar: navy #0A192F, active item cyan #00D4FF
+- Content: white, 0.5px borders, clean flat design
+- All labels, messages, dates in Portuguese BR
+- Toast notifications for success/error
+- Confirmation dialogs for destructive actions
+- Empty states with call-to-action
+- Responsive: desktop-first
