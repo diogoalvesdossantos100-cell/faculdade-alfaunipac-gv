@@ -1,0 +1,169 @@
+Build a full-stack SaaS web application called **AlfaUnipac GV — Sistema de Gestão Acadêmica** for a Brazilian university (Faculdade AlfaUnipac, campus Governador Valadares/MG).
+
+---
+
+## TECH STACK
+- Backend: Python + FastAPI
+- Frontend: React + Vite + Tailwind CSS
+- Database: PostgreSQL (Replit native)
+- Auth: JWT with role-based access (Admin, Coordenador, Secretaria)
+- File export: openpyxl (Excel) + reportlab (PDF)
+
+---
+
+## CORE DATA MODEL
+
+### Cursos (fixed list):
+- Administração
+- Enfermagem
+- Farmácia
+- Fisioterapia
+- Nutrição
+
+### Aluno:
+- id, nome_completo, cpf, matricula, curso, turno (Matutino/Vespertino/Noturno)
+- status: Ativo | Retido | Trancado | Egresso
+- valor_mensalidade (default: R$ 979,00)
+- financiador: "Hospital Bom Samaritano" (default for all)
+- created_at
+
+### Disciplina:
+- id, nome, curso, semestre, carga_horaria_total, professor
+
+### Turma:
+- id, disciplina_id, periodo (ex: "2026/1"), data_inicio, data_fim
+
+### Chamada (Attendance):
+- id, turma_id, aluno_id, data, presente (bool), justificada (bool)
+- tipo_justificativa: null | "Atestado" | "Declaracao_Trabalho" | "Licenca_Maternidade" | "Outro"
+- observacao
+
+### Documento:
+- id, aluno_id, tipo: "Atestado" | "Declaracao_Trabalho" | "Licenca_Maternidade"
+- data_entrega, data_inicio_periodo, data_fim_periodo, arquivo_url, status: "Pendente" | "Aprovado" | "Rejeitado"
+- observacao
+
+### Retencao:
+- id, aluno_id, turma_id, percentual_faltas, data_notificacao, status: "Em_Acompanhamento" | "Regularizado" | "Reprovado_Faltas"
+- observacao_secretaria
+
+### BAP_Mensal (billing list to hospital):
+- id, mes, ano, aluno_id, curso, valor_mensalidade, status_pagamento: "Pendente" | "Confirmado"
+
+---
+
+## NAVIGATION — 6 main tabs in sidebar:
+
+### 1. 📋 ALUNOS
+- List all students with search (name, CPF, matricula) and filter by curso/status
+- Add/Edit/Deactivate student
+- Bulk import via CSV/XLSX (columns: nome, cpf, matricula, curso, turno)
+- Student detail page showing: personal data, attendance summary per discipline, documents, retention flag
+
+### 2. 📅 FREQUÊNCIA
+- Select: Turma → Date → then show the full class roster with checkboxes (Presente / Ausente / Justificado)
+- Save attendance for the day
+- View attendance history per student per turma
+- Absence counter auto-calculates: total_aulas, faltas, faltas_justificadas, percentual_faltas
+- Brazilian law threshold: if percentual_faltas > 25%, flag student automatically for RETENÇÃO
+- Show attendance grid per student (calendar heatmap style: green=present, red=absent, yellow=justified)
+
+### 3. ⚠️ RETENÇÃO
+- Dedicated tab showing ALL students currently above 25% absence threshold
+- Table columns: Nome, Curso, Disciplina, % Faltas, Data 1ª Notificação, Status, Ações
+- Actions: "Notificar Aluno", "Registrar Atendimento", "Regularizar", "Reprovar por Faltas"
+- Filter by: curso, disciplina, status
+- Timeline of actions per retained student (audit log)
+- Export to PDF: "Relatório de Retenção por Período"
+
+### 4. 📄 DOCUMENTOS
+- Register documents per student: Atestado Médico, Declaração de Trabalho, Licença Maternidade
+- For each document: student name, type, period covered (start/end date), date received, status
+- When a document is Aprovado: automatically mark corresponding absences as "justificada" in the Chamada table
+- Document status workflow: Pendente → Aprovado | Rejeitado
+- List view with filters: tipo, status, data_entrega, curso
+- Alert badge on tab for pending documents
+
+### 5. 💰 LISTA BAP (Bolsa Assistência Pedagógica)
+- Monthly billing list sent to Hospital Bom Samaritano
+- Generate BAP for selected month/year:
+  - Pulls all active students (status = Ativo)
+  - Groups by course
+  - Displays: sequence number, student name, course, monthly fee (R$ 979,00)
+  - Shows TOTAL at bottom
+- Export to PDF that matches the official format:
+  Header: "GOVERNADOR VALADARES — [MÊS/ANO]"
+  Columns: #, ALUNO, CURSO, VALOR
+  Footer: TOTAL + "POR EXPRESSÃO DE VERDADE, ASSINO, VALIDO E DOU FÉ NA PRESENTE DECLARAÇÃO DE FREQUÊNCIA" + "SECRETARIA DO POLO DE GOVERNADOR VALADARES"
+- Export to XLSX (same layout)
+- BAP history: view past months
+
+### 6. 📊 RELATÓRIOS
+- Relatório de Faltas por Aluno (period filter)
+- Relatório de Faltas por Disciplina
+- Relatório de Retenção (students at risk)
+- Relatório de Documentos Entregues
+- Resumo Mensal por Curso (attendance rate per course)
+- All reports exportable as PDF and XLSX
+
+---
+
+## DASHBOARD (home page)
+Show cards:
+- Total Alunos Ativos
+- Alunos em Retenção (with warning color)
+- Documentos Pendentes de Análise
+- Frequência Média do Mês (%)
+- Próximas Chamadas Registradas
+- Quick action buttons: "Registrar Chamada", "Nova BAP", "Ver Retenção"
+
+---
+
+## SEED DATA
+Pre-load the database with these courses and ~10 sample students per course to demonstrate the system. Use realistic Brazilian names. Set default monthly fee to R$ 979,00 for all. Mark 2 students per course as "Em Retenção" for demo.
+
+---
+
+## UX REQUIREMENTS
+- Responsive design (desktop-first, but mobile-usable)
+- Color scheme: navy (#0A192F) sidebar, white content area, cyan (#00D4FF) accents for buttons/badges
+- Portuguese (BR) throughout — all labels, messages, date formats DD/MM/YYYY, currency R$ X.XXX,XX
+- Toast notifications for success/error actions
+- Confirmation dialogs for destructive actions
+- Loading skeletons while fetching data
+- Empty state illustrations with call-to-action
+
+---
+
+## AUTH
+- Login page with email + password
+- Roles:
+  - Admin: full access
+  - Coordenador: view all + manage frequency + retenção
+  - Secretaria: manage documents + generate BAP
+- Seed one admin user: admin@alfaunipac.com / admin123
+
+---
+
+## API STRUCTURE (FastAPI)
+/api/alunos — CRUD
+/api/turmas — CRUD
+/api/chamadas — POST (save attendance), GET (by turma+date)
+/api/retencao — GET list, PATCH status
+/api/documentos — CRUD + PATCH status (triggers justification)
+/api/bap — POST generate, GET history
+/api/relatorios — GET various report endpoints
+/api/auth/login — returns JWT
+
+---
+
+## IMPORTANT BUSINESS RULES
+1. Absence threshold: > 25% of total classes = automatic retention flag
+2. Justified absences (with approved document) still count as absence for frequency % but are shown separately
+3. BAP list only includes students with status = Ativo
+4. When a student is marked Reprovado_Faltas in Retenção, their status changes to Retido in the Aluno table
+5. A Declaração de Trabalho only justifies absences on the specific days worked (not blanket)
+6. Licença Maternidade justifies the full covered period
+7. Atestado Médico justifies the exact days covered by the document
+
+Start by creating the database models, then the FastAPI backend, then the React frontend. Make the system fully functional end-to-end.

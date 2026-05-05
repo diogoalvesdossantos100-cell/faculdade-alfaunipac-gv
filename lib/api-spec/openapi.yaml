@@ -3,20 +3,40 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AlfaUnipac GV — Sistema de Gestão Acadêmica API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: alunos
+    description: Student operations
+  - name: disciplinas
+    description: Discipline operations
+  - name: turmas
+    description: Class operations
+  - name: chamadas
+    description: Attendance operations
+  - name: retencao
+    description: Retention operations
+  - name: documentos
+    description: Document operations
+  - name: bap
+    description: BAP billing operations
+  - name: relatorios
+    description: Report operations
+  - name: dashboard
+    description: Dashboard operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +44,1086 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # AUTH
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ALUNOS
+  /alunos:
+    get:
+      operationId: listAlunos
+      tags: [alunos]
+      summary: List all students
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: curso
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: turno
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Aluno"
+    post:
+      operationId: createAluno
+      tags: [alunos]
+      summary: Create a new student
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAlunoBody"
+      responses:
+        "201":
+          description: Created student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Aluno"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /alunos/{id}:
+    get:
+      operationId: getAluno
+      tags: [alunos]
+      summary: Get a student by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlunoDetalhado"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateAluno
+      tags: [alunos]
+      summary: Update a student
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAlunoBody"
+      responses:
+        "200":
+          description: Updated student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Aluno"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteAluno
+      tags: [alunos]
+      summary: Deactivate a student
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Aluno"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /alunos/import:
+    post:
+      operationId: importAlunos
+      tags: [alunos]
+      summary: Bulk import students from JSON array
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportAlunosBody"
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # DISCIPLINAS
+  /disciplinas:
+    get:
+      operationId: listDisciplinas
+      tags: [disciplinas]
+      summary: List all disciplines
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: curso
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of disciplines
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Disciplina"
+    post:
+      operationId: createDisciplina
+      tags: [disciplinas]
+      summary: Create a discipline
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDisciplinaBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Disciplina"
+
+  /disciplinas/{id}:
+    patch:
+      operationId: updateDisciplina
+      tags: [disciplinas]
+      summary: Update a discipline
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDisciplinaBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Disciplina"
+    delete:
+      operationId: deleteDisciplina
+      tags: [disciplinas]
+      summary: Delete a discipline
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # TURMAS
+  /turmas:
+    get:
+      operationId: listTurmas
+      tags: [turmas]
+      summary: List all turmas
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: disciplinaId
+          in: query
+          schema:
+            type: integer
+        - name: periodo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of turmas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Turma"
+    post:
+      operationId: createTurma
+      tags: [turmas]
+      summary: Create a turma
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTurmaBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Turma"
+
+  /turmas/{id}:
+    get:
+      operationId: getTurma
+      tags: [turmas]
+      summary: Get a turma by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Turma
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TurmaDetalhada"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateTurma
+      tags: [turmas]
+      summary: Update a turma
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTurmaBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Turma"
+
+  /turmas/{id}/alunos:
+    get:
+      operationId: getTurmaAlunos
+      tags: [turmas]
+      summary: Get students enrolled in a turma
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of students in turma
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Aluno"
+
+  /turmas/{id}/matricular:
+    post:
+      operationId: matricularAluno
+      tags: [turmas]
+      summary: Enroll a student in a turma
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatricularAlunoBody"
+      responses:
+        "201":
+          description: Enrolled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Matricula"
+
+  # CHAMADAS (ATTENDANCE)
+  /chamadas:
+    get:
+      operationId: listChamadas
+      tags: [chamadas]
+      summary: List attendance records
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: turmaId
+          in: query
+          schema:
+            type: integer
+        - name: alunoId
+          in: query
+          schema:
+            type: integer
+        - name: data
+          in: query
+          schema:
+            type: string
+        - name: dataInicio
+          in: query
+          schema:
+            type: string
+        - name: dataFim
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chamada"
+    post:
+      operationId: saveChamada
+      tags: [chamadas]
+      summary: Save attendance for a turma on a date
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveChamadaBody"
+      responses:
+        "200":
+          description: Saved attendance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveChamadaResponse"
+
+  /chamadas/frequencia/{alunoId}:
+    get:
+      operationId: getFrequenciaAluno
+      tags: [chamadas]
+      summary: Get attendance summary for a student across all turmas
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: alunoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Frequency summary per turma
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FrequenciaResumo"
+
+  /chamadas/datas/{turmaId}:
+    get:
+      operationId: getDatasRegistradas
+      tags: [chamadas]
+      summary: Get registered attendance dates for a turma
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: turmaId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of dates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  # RETENCAO
+  /retencao:
+    get:
+      operationId: listRetencao
+      tags: [retencao]
+      summary: List students in retention
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: curso
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: disciplinaId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of retention records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RetencaoDetalhada"
+
+  /retencao/{id}:
+    patch:
+      operationId: updateRetencao
+      tags: [retencao]
+      summary: Update retention record status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRetencaoBody"
+      responses:
+        "200":
+          description: Updated retention record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Retencao"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /retencao/{id}/timeline:
+    get:
+      operationId: getRetencaoTimeline
+      tags: [retencao]
+      summary: Get action timeline for a retention record
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Timeline of actions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RetencaoAuditLog"
+
+  /retencao/{id}/notificar:
+    post:
+      operationId: notificarAluno
+      tags: [retencao]
+      summary: Notify student about retention
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificarAlunoBody"
+      responses:
+        "200":
+          description: Notification registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetencaoAuditLog"
+
+  # DOCUMENTOS
+  /documentos:
+    get:
+      operationId: listDocumentos
+      tags: [documentos]
+      summary: List documents
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: alunoId
+          in: query
+          schema:
+            type: integer
+        - name: tipo
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: curso
+          in: query
+          schema:
+            type: string
+        - name: dataInicio
+          in: query
+          schema:
+            type: string
+        - name: dataFim
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentoDetalhado"
+    post:
+      operationId: createDocumento
+      tags: [documentos]
+      summary: Register a document
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDocumentoBody"
+      responses:
+        "201":
+          description: Created document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Documento"
+
+  /documentos/{id}:
+    get:
+      operationId: getDocumento
+      tags: [documentos]
+      summary: Get a document by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentoDetalhado"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateDocumentoStatus
+      tags: [documentos]
+      summary: Update document status (approve/reject)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDocumentoStatusBody"
+      responses:
+        "200":
+          description: Updated document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Documento"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /documentos/pendentes/count:
+    get:
+      operationId: getPendentesCount
+      tags: [documentos]
+      summary: Count pending documents
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CountResponse"
+
+  # BAP
+  /bap:
+    get:
+      operationId: listBap
+      tags: [bap]
+      summary: List BAP records
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: mes
+          in: query
+          schema:
+            type: integer
+        - name: ano
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: BAP records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BapDetalhado"
+    post:
+      operationId: generateBap
+      tags: [bap]
+      summary: Generate BAP for a month/year
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateBapBody"
+      responses:
+        "200":
+          description: Generated BAP records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateBapResponse"
+
+  /bap/{id}:
+    patch:
+      operationId: updateBapStatus
+      tags: [bap]
+      summary: Update BAP payment status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBapStatusBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BapMensal"
+
+  /bap/historico:
+    get:
+      operationId: getBapHistorico
+      tags: [bap]
+      summary: Get BAP history (list of month/year periods)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: History list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BapPeriodo"
+
+  # RELATORIOS
+  /relatorios/faltas-por-aluno:
+    get:
+      operationId: getRelatorioFaltasPorAluno
+      tags: [relatorios]
+      summary: Report of absences by student
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dataInicio
+          in: query
+          schema:
+            type: string
+        - name: dataFim
+          in: query
+          schema:
+            type: string
+        - name: curso
+          in: query
+          schema:
+            type: string
+        - name: alunoId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Report data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RelatorioFaltasAluno"
+
+  /relatorios/faltas-por-disciplina:
+    get:
+      operationId: getRelatorioFaltasPorDisciplina
+      tags: [relatorios]
+      summary: Report of absences by discipline
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dataInicio
+          in: query
+          schema:
+            type: string
+        - name: dataFim
+          in: query
+          schema:
+            type: string
+        - name: curso
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Report data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RelatorioFaltasDisciplina"
+
+  /relatorios/retencao:
+    get:
+      operationId: getRelatorioRetencao
+      tags: [relatorios]
+      summary: Retention report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: curso
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Report data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RelatorioRetencao"
+
+  /relatorios/documentos:
+    get:
+      operationId: getRelatorioDocumentos
+      tags: [relatorios]
+      summary: Document submission report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dataInicio
+          in: query
+          schema:
+            type: string
+        - name: dataFim
+          in: query
+          schema:
+            type: string
+        - name: tipo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Report data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RelatorioDocumento"
+
+  /relatorios/resumo-mensal:
+    get:
+      operationId: getRelatorioResumoMensal
+      tags: [relatorios]
+      summary: Monthly summary per course
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: mes
+          in: query
+          schema:
+            type: integer
+        - name: ano
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Monthly summary
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResumoMensalCurso"
+
+  # DASHBOARD
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard statistics
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/proximas-chamadas:
+    get:
+      operationId: getProximasChamadas
+      tags: [dashboard]
+      summary: Get recently registered attendance sessions
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Recent attendance sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProximaChamada"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +1133,1021 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    CountResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+      required:
+        - count
+
+    # Auth
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - token
+        - user
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        nome:
+          type: string
+        role:
+          type: string
+          enum: [Admin, Coordenador, Secretaria]
+      required:
+        - id
+        - email
+        - nome
+        - role
+
+    # Aluno
+    Aluno:
+      type: object
+      properties:
+        id:
+          type: integer
+        nomeCompleto:
+          type: string
+        cpf:
+          type: string
+        matricula:
+          type: string
+        curso:
+          type: string
+        turno:
+          type: string
+          enum: [Matutino, Vespertino, Noturno]
+        status:
+          type: string
+          enum: [Ativo, Retido, Trancado, Egresso]
+        valorMensalidade:
+          type: number
+        financiador:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - nomeCompleto
+        - cpf
+        - matricula
+        - curso
+        - turno
+        - status
+        - valorMensalidade
+        - financiador
+        - createdAt
+
+    AlunoDetalhado:
+      type: object
+      properties:
+        id:
+          type: integer
+        nomeCompleto:
+          type: string
+        cpf:
+          type: string
+        matricula:
+          type: string
+        curso:
+          type: string
+        turno:
+          type: string
+          enum: [Matutino, Vespertino, Noturno]
+        status:
+          type: string
+          enum: [Ativo, Retido, Trancado, Egresso]
+        valorMensalidade:
+          type: number
+        financiador:
+          type: string
+        createdAt:
+          type: string
+        frequencias:
+          type: array
+          items:
+            $ref: "#/components/schemas/FrequenciaResumo"
+        documentos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Documento"
+        emRetencao:
+          type: boolean
+      required:
+        - id
+        - nomeCompleto
+        - cpf
+        - matricula
+        - curso
+        - turno
+        - status
+        - valorMensalidade
+        - financiador
+        - createdAt
+        - frequencias
+        - documentos
+        - emRetencao
+
+    CreateAlunoBody:
+      type: object
+      properties:
+        nomeCompleto:
+          type: string
+        cpf:
+          type: string
+        matricula:
+          type: string
+        curso:
+          type: string
+        turno:
+          type: string
+          enum: [Matutino, Vespertino, Noturno]
+        status:
+          type: string
+          enum: [Ativo, Retido, Trancado, Egresso]
+        valorMensalidade:
+          type: number
+        financiador:
+          type: string
+      required:
+        - nomeCompleto
+        - cpf
+        - matricula
+        - curso
+        - turno
+
+    UpdateAlunoBody:
+      type: object
+      properties:
+        nomeCompleto:
+          type: string
+        cpf:
+          type: string
+        matricula:
+          type: string
+        curso:
+          type: string
+        turno:
+          type: string
+          enum: [Matutino, Vespertino, Noturno]
+        status:
+          type: string
+          enum: [Ativo, Retido, Trancado, Egresso]
+        valorMensalidade:
+          type: number
+        financiador:
+          type: string
+
+    ImportAlunosBody:
+      type: object
+      properties:
+        alunos:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateAlunoBody"
+      required:
+        - alunos
+
+    ImportResult:
+      type: object
+      properties:
+        imported:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: string
+      required:
+        - imported
+        - errors
+
+    # Disciplina
+    Disciplina:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        curso:
+          type: string
+        semestre:
+          type: integer
+        cargaHorariaTotal:
+          type: integer
+        professor:
+          type: ["string", "null"]
+      required:
+        - id
+        - nome
+        - curso
+        - semestre
+        - cargaHorariaTotal
+
+    CreateDisciplinaBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        curso:
+          type: string
+        semestre:
+          type: integer
+        cargaHorariaTotal:
+          type: integer
+        professor:
+          type: ["string", "null"]
+      required:
+        - nome
+        - curso
+        - semestre
+        - cargaHorariaTotal
+
+    UpdateDisciplinaBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        curso:
+          type: string
+        semestre:
+          type: integer
+        cargaHorariaTotal:
+          type: integer
+        professor:
+          type: ["string", "null"]
+
+    # Turma
+    Turma:
+      type: object
+      properties:
+        id:
+          type: integer
+        disciplinaId:
+          type: integer
+        periodo:
+          type: string
+        dataInicio:
+          type: string
+        dataFim:
+          type: string
+        disciplinaNome:
+          type: ["string", "null"]
+        curso:
+          type: ["string", "null"]
+      required:
+        - id
+        - disciplinaId
+        - periodo
+        - dataInicio
+        - dataFim
+
+    TurmaDetalhada:
+      type: object
+      properties:
+        id:
+          type: integer
+        disciplinaId:
+          type: integer
+        periodo:
+          type: string
+        dataInicio:
+          type: string
+        dataFim:
+          type: string
+        disciplina:
+          $ref: "#/components/schemas/Disciplina"
+        totalAlunos:
+          type: integer
+      required:
+        - id
+        - disciplinaId
+        - periodo
+        - dataInicio
+        - dataFim
+        - disciplina
+        - totalAlunos
+
+    CreateTurmaBody:
+      type: object
+      properties:
+        disciplinaId:
+          type: integer
+        periodo:
+          type: string
+        dataInicio:
+          type: string
+        dataFim:
+          type: string
+      required:
+        - disciplinaId
+        - periodo
+        - dataInicio
+        - dataFim
+
+    UpdateTurmaBody:
+      type: object
+      properties:
+        disciplinaId:
+          type: integer
+        periodo:
+          type: string
+        dataInicio:
+          type: string
+        dataFim:
+          type: string
+
+    Matricula:
+      type: object
+      properties:
+        id:
+          type: integer
+        turmaId:
+          type: integer
+        alunoId:
+          type: integer
+      required:
+        - id
+        - turmaId
+        - alunoId
+
+    MatricularAlunoBody:
+      type: object
+      properties:
+        alunoId:
+          type: integer
+      required:
+        - alunoId
+
+    # Chamada (Attendance)
+    Chamada:
+      type: object
+      properties:
+        id:
+          type: integer
+        turmaId:
+          type: integer
+        alunoId:
+          type: integer
+        data:
+          type: string
+        presente:
+          type: boolean
+        justificada:
+          type: boolean
+        tipoJustificativa:
+          type: ["string", "null"]
+        observacao:
+          type: ["string", "null"]
+        alunoNome:
+          type: ["string", "null"]
+      required:
+        - id
+        - turmaId
+        - alunoId
+        - data
+        - presente
+        - justificada
+
+    SaveChamadaBody:
+      type: object
+      properties:
+        turmaId:
+          type: integer
+        data:
+          type: string
+        registros:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChamadaRegistro"
+      required:
+        - turmaId
+        - data
+        - registros
+
+    ChamadaRegistro:
+      type: object
+      properties:
+        alunoId:
+          type: integer
+        presente:
+          type: boolean
+        justificada:
+          type: boolean
+        tipoJustificativa:
+          type: ["string", "null"]
+        observacao:
+          type: ["string", "null"]
+      required:
+        - alunoId
+        - presente
+        - justificada
+
+    SaveChamadaResponse:
+      type: object
+      properties:
+        saved:
+          type: integer
+        retencaoFlagged:
+          type: integer
+      required:
+        - saved
+        - retencaoFlagged
+
+    FrequenciaResumo:
+      type: object
+      properties:
+        turmaId:
+          type: integer
+        disciplinaNome:
+          type: string
+        periodo:
+          type: string
+        totalAulas:
+          type: integer
+        presencas:
+          type: integer
+        faltas:
+          type: integer
+        faltasJustificadas:
+          type: integer
+        percentualFaltas:
+          type: number
+        emRetencao:
+          type: boolean
+      required:
+        - turmaId
+        - disciplinaNome
+        - periodo
+        - totalAulas
+        - presencas
+        - faltas
+        - faltasJustificadas
+        - percentualFaltas
+        - emRetencao
+
+    # Retencao
+    Retencao:
+      type: object
+      properties:
+        id:
+          type: integer
+        alunoId:
+          type: integer
+        turmaId:
+          type: integer
+        percentualFaltas:
+          type: number
+        dataNotificacao:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [Em_Acompanhamento, Regularizado, Reprovado_Faltas]
+        observacaoSecretaria:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - alunoId
+        - turmaId
+        - percentualFaltas
+        - status
+        - createdAt
+
+    RetencaoDetalhada:
+      type: object
+      properties:
+        id:
+          type: integer
+        alunoId:
+          type: integer
+        turmaId:
+          type: integer
+        percentualFaltas:
+          type: number
+        dataNotificacao:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [Em_Acompanhamento, Regularizado, Reprovado_Faltas]
+        observacaoSecretaria:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        alunoNome:
+          type: string
+        alunoCurso:
+          type: string
+        disciplinaNome:
+          type: string
+        periodo:
+          type: string
+      required:
+        - id
+        - alunoId
+        - turmaId
+        - percentualFaltas
+        - status
+        - createdAt
+        - alunoNome
+        - alunoCurso
+        - disciplinaNome
+        - periodo
+
+    UpdateRetencaoBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Em_Acompanhamento, Regularizado, Reprovado_Faltas]
+        observacaoSecretaria:
+          type: string
+
+    NotificarAlunoBody:
+      type: object
+      properties:
+        observacao:
+          type: string
+      required:
+        - observacao
+
+    RetencaoAuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        retencaoId:
+          type: integer
+        acao:
+          type: string
+        observacao:
+          type: ["string", "null"]
+        realizadoPor:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - retencaoId
+        - acao
+        - createdAt
+
+    # Documento
+    Documento:
+      type: object
+      properties:
+        id:
+          type: integer
+        alunoId:
+          type: integer
+        tipo:
+          type: string
+          enum: [Atestado, Declaracao_Trabalho, Licenca_Maternidade]
+        dataEntrega:
+          type: string
+        dataInicioPeriodo:
+          type: string
+        dataFimPeriodo:
+          type: string
+        arquivoUrl:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [Pendente, Aprovado, Rejeitado]
+        observacao:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - alunoId
+        - tipo
+        - dataEntrega
+        - dataInicioPeriodo
+        - dataFimPeriodo
+        - status
+        - createdAt
+
+    DocumentoDetalhado:
+      type: object
+      properties:
+        id:
+          type: integer
+        alunoId:
+          type: integer
+        tipo:
+          type: string
+          enum: [Atestado, Declaracao_Trabalho, Licenca_Maternidade]
+        dataEntrega:
+          type: string
+        dataInicioPeriodo:
+          type: string
+        dataFimPeriodo:
+          type: string
+        arquivoUrl:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [Pendente, Aprovado, Rejeitado]
+        observacao:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        alunoNome:
+          type: string
+        alunoCurso:
+          type: string
+      required:
+        - id
+        - alunoId
+        - tipo
+        - dataEntrega
+        - dataInicioPeriodo
+        - dataFimPeriodo
+        - status
+        - createdAt
+        - alunoNome
+        - alunoCurso
+
+    CreateDocumentoBody:
+      type: object
+      properties:
+        alunoId:
+          type: integer
+        tipo:
+          type: string
+          enum: [Atestado, Declaracao_Trabalho, Licenca_Maternidade]
+        dataEntrega:
+          type: string
+        dataInicioPeriodo:
+          type: string
+        dataFimPeriodo:
+          type: string
+        arquivoUrl:
+          type: ["string", "null"]
+        observacao:
+          type: ["string", "null"]
+      required:
+        - alunoId
+        - tipo
+        - dataEntrega
+        - dataInicioPeriodo
+        - dataFimPeriodo
+
+    UpdateDocumentoStatusBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Aprovado, Rejeitado]
+        observacao:
+          type: ["string", "null"]
+      required:
+        - status
+
+    # BAP
+    BapMensal:
+      type: object
+      properties:
+        id:
+          type: integer
+        mes:
+          type: integer
+        ano:
+          type: integer
+        alunoId:
+          type: integer
+        curso:
+          type: string
+        valorMensalidade:
+          type: number
+        statusPagamento:
+          type: string
+          enum: [Pendente, Confirmado]
+      required:
+        - id
+        - mes
+        - ano
+        - alunoId
+        - curso
+        - valorMensalidade
+        - statusPagamento
+
+    BapDetalhado:
+      type: object
+      properties:
+        id:
+          type: integer
+        mes:
+          type: integer
+        ano:
+          type: integer
+        alunoId:
+          type: integer
+        curso:
+          type: string
+        valorMensalidade:
+          type: number
+        statusPagamento:
+          type: string
+          enum: [Pendente, Confirmado]
+        alunoNome:
+          type: string
+      required:
+        - id
+        - mes
+        - ano
+        - alunoId
+        - curso
+        - valorMensalidade
+        - statusPagamento
+        - alunoNome
+
+    GenerateBapBody:
+      type: object
+      properties:
+        mes:
+          type: integer
+        ano:
+          type: integer
+      required:
+        - mes
+        - ano
+
+    GenerateBapResponse:
+      type: object
+      properties:
+        generated:
+          type: integer
+        total:
+          type: number
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/BapDetalhado"
+      required:
+        - generated
+        - total
+        - records
+
+    UpdateBapStatusBody:
+      type: object
+      properties:
+        statusPagamento:
+          type: string
+          enum: [Pendente, Confirmado]
+      required:
+        - statusPagamento
+
+    BapPeriodo:
+      type: object
+      properties:
+        mes:
+          type: integer
+        ano:
+          type: integer
+        totalAlunos:
+          type: integer
+        totalValor:
+          type: number
+        status:
+          type: string
+      required:
+        - mes
+        - ano
+        - totalAlunos
+        - totalValor
+        - status
+
+    # Relatorios
+    RelatorioFaltasAluno:
+      type: object
+      properties:
+        alunoId:
+          type: integer
+        alunoNome:
+          type: string
+        curso:
+          type: string
+        turmaId:
+          type: integer
+        disciplinaNome:
+          type: string
+        totalAulas:
+          type: integer
+        presencas:
+          type: integer
+        faltas:
+          type: integer
+        faltasJustificadas:
+          type: integer
+        percentualFaltas:
+          type: number
+        emRetencao:
+          type: boolean
+      required:
+        - alunoId
+        - alunoNome
+        - curso
+        - turmaId
+        - disciplinaNome
+        - totalAulas
+        - presencas
+        - faltas
+        - faltasJustificadas
+        - percentualFaltas
+        - emRetencao
+
+    RelatorioFaltasDisciplina:
+      type: object
+      properties:
+        disciplinaId:
+          type: integer
+        disciplinaNome:
+          type: string
+        curso:
+          type: string
+        turmaId:
+          type: integer
+        periodo:
+          type: string
+        totalAlunos:
+          type: integer
+        mediaPresenca:
+          type: number
+        alunosEmRetencao:
+          type: integer
+      required:
+        - disciplinaId
+        - disciplinaNome
+        - curso
+        - turmaId
+        - periodo
+        - totalAlunos
+        - mediaPresenca
+        - alunosEmRetencao
+
+    RelatorioRetencao:
+      type: object
+      properties:
+        alunoId:
+          type: integer
+        alunoNome:
+          type: string
+        curso:
+          type: string
+        disciplinaNome:
+          type: string
+        percentualFaltas:
+          type: number
+        status:
+          type: string
+        dataNotificacao:
+          type: ["string", "null"]
+      required:
+        - alunoId
+        - alunoNome
+        - curso
+        - disciplinaNome
+        - percentualFaltas
+        - status
+
+    RelatorioDocumento:
+      type: object
+      properties:
+        documentoId:
+          type: integer
+        alunoNome:
+          type: string
+        curso:
+          type: string
+        tipo:
+          type: string
+        dataEntrega:
+          type: string
+        periodo:
+          type: string
+        status:
+          type: string
+      required:
+        - documentoId
+        - alunoNome
+        - curso
+        - tipo
+        - dataEntrega
+        - periodo
+        - status
+
+    ResumoMensalCurso:
+      type: object
+      properties:
+        curso:
+          type: string
+        totalAlunos:
+          type: integer
+        mediaPresenca:
+          type: number
+        alunosEmRetencao:
+          type: integer
+        totalAulas:
+          type: integer
+      required:
+        - curso
+        - totalAlunos
+        - mediaPresenca
+        - alunosEmRetencao
+        - totalAulas
+
+    # Dashboard
+    DashboardStats:
+      type: object
+      properties:
+        totalAlunosAtivos:
+          type: integer
+        alunosEmRetencao:
+          type: integer
+        documentosPendentes:
+          type: integer
+        frequenciaMediaMes:
+          type: number
+        totalCursos:
+          type: integer
+        alunosPorCurso:
+          type: array
+          items:
+            $ref: "#/components/schemas/CursoCount"
+      required:
+        - totalAlunosAtivos
+        - alunosEmRetencao
+        - documentosPendentes
+        - frequenciaMediaMes
+        - totalCursos
+        - alunosPorCurso
+
+    CursoCount:
+      type: object
+      properties:
+        curso:
+          type: string
+        count:
+          type: integer
+      required:
+        - curso
+        - count
+
+    ProximaChamada:
+      type: object
+      properties:
+        turmaId:
+          type: integer
+        disciplinaNome:
+          type: string
+        curso:
+          type: string
+        periodo:
+          type: string
+        data:
+          type: string
+        presentes:
+          type: integer
+        ausentes:
+          type: integer
+      required:
+        - turmaId
+        - disciplinaNome
+        - curso
+        - periodo
+        - data
+        - presentes
+        - ausentes

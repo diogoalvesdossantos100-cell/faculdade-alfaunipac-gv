@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "AlfaUnipac GV — Sistema de Gestão Acadêmica"
+version = "1.0.0"
+id = "artifacts/alfa-unipac"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26123
+
+[services.development]
+run = "pnpm --filter @workspace/alfa-unipac run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/alfa-unipac", "run", "build" ]
+publicDir = "artifacts/alfa-unipac/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26123"
+BASE_PATH = "/"
