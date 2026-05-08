@@ -77,7 +77,7 @@ export default function AlunoDetalhe() {
 
       {/* Frequência */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-800 mb-4">Frequência por Disciplina</h2>
+        <h2 className="text-base font-semibold text-slate-800 mb-4">Frequência por Turma</h2>
         {!frequencias?.length ? (
           <p className="text-slate-400 text-sm">Sem registros de frequência.</p>
         ) : (
@@ -88,7 +88,7 @@ export default function AlunoDetalhe() {
               return (
                 <div key={f.turmaId} className="flex items-center gap-4 p-3 rounded-lg bg-slate-50">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{f.disciplinaNome}</p>
+                    <p className="text-sm font-medium text-slate-800 truncate">{f.turmaNome}</p>
                     <p className="text-xs text-slate-400">{f.periodo}</p>
                   </div>
                   <div className="text-right flex-shrink-0">

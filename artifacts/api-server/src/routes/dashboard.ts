@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { db, alunosTable, retencaoTable, documentosTable, chamadasTable, turmasTable, disciplinasTable } from "@workspace/db";
+import { db, alunosTable, retencaoTable, documentosTable, chamadasTable, turmasTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -20,7 +20,6 @@ router.get("/dashboard/stats", async (_req, res): Promise<void> => {
     .where(eq(documentosTable.status, "Pendente"));
   const documentosPendentes = pendentes.length;
 
-  // Frequency for current month
   const now = new Date();
   const mesStr = String(now.getMonth() + 1).padStart(2, "0");
   const anoStr = String(now.getFullYear());
@@ -58,20 +57,17 @@ router.get("/dashboard/stats", async (_req, res): Promise<void> => {
 });
 
 router.get("/dashboard/proximas-chamadas", async (_req, res): Promise<void> => {
-  // Get distinct turmaId+data combinations from chamadas ordered by most recent
   const distinctRows = await db
     .selectDistinct({ turmaId: chamadasTable.turmaId, data: chamadasTable.data })
     .from(chamadasTable)
     .orderBy(chamadasTable.data);
 
-  // Take last 10
   const recent = distinctRows.slice(-10).reverse();
 
   const result = [];
   for (const row of recent) {
     const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, row.turmaId));
     if (!turma) continue;
-    const [disciplina] = await db.select().from(disciplinasTable).where(eq(disciplinasTable.id, turma.disciplinaId));
 
     const chamadas = await db
       .select()
@@ -83,8 +79,8 @@ router.get("/dashboard/proximas-chamadas", async (_req, res): Promise<void> => {
 
     result.push({
       turmaId: row.turmaId,
-      disciplinaNome: disciplina?.nome ?? "N/A",
-      curso: disciplina?.curso ?? "N/A",
+      turmaNome: turma.nome,
+      curso: turma.curso,
       periodo: turma.periodo,
       data: row.data,
       presentes,

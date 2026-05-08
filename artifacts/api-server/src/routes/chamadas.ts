@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
-import { db, chamadasTable, matriculasTable, alunosTable, turmasTable, disciplinasTable, retencaoTable, retencaoAuditLogTable } from "@workspace/db";
+import { eq, and, gte, lte } from "drizzle-orm";
+import { db, chamadasTable, matriculasTable, alunosTable, turmasTable, retencaoTable, retencaoAuditLogTable } from "@workspace/db";
 import { SaveChamadaBody, GetFrequenciaAlunoParams, GetDatasRegistradasParams } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -50,7 +50,6 @@ router.post("/chamadas", async (req, res): Promise<void> => {
   let retencaoFlagged = 0;
 
   for (const reg of registros) {
-    // Upsert: delete existing and re-insert
     await db
       .delete(chamadasTable)
       .where(and(eq(chamadasTable.turmaId, turmaId), eq(chamadasTable.alunoId, reg.alunoId), eq(chamadasTable.data, data)));
@@ -67,7 +66,6 @@ router.post("/chamadas", async (req, res): Promise<void> => {
     saved++;
   }
 
-  // Check retention for all students in this turma
   const allChamadas = await db
     .select()
     .from(chamadasTable)
@@ -137,7 +135,6 @@ router.get("/chamadas/frequencia/:alunoId", async (req, res): Promise<void> => {
   for (const m of matriculas) {
     const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, m.turmaId));
     if (!turma) continue;
-    const [disciplina] = await db.select().from(disciplinasTable).where(eq(disciplinasTable.id, turma.disciplinaId));
 
     const chamadas = await db
       .select()
@@ -157,7 +154,7 @@ router.get("/chamadas/frequencia/:alunoId", async (req, res): Promise<void> => {
 
     result.push({
       turmaId: m.turmaId,
-      disciplinaNome: disciplina?.nome ?? "N/A",
+      turmaNome: turma.nome,
       periodo: turma.periodo,
       totalAulas,
       presencas,

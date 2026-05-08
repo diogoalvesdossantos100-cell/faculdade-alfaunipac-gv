@@ -94,7 +94,7 @@ export const AlunoDetalhadoStatus = {
 
 export interface FrequenciaResumo {
   turmaId: number;
-  disciplinaNome: string;
+  turmaNome: string;
   periodo: string;
   totalAulas: number;
   presencas: number;
@@ -221,65 +221,36 @@ export interface ImportResult {
   errors: string[];
 }
 
-export interface Disciplina {
-  id: number;
-  nome: string;
-  curso: string;
-  semestre: number;
-  cargaHorariaTotal: number;
-  /** @nullable */
-  professor?: string | null;
-}
-
-export interface CreateDisciplinaBody {
-  nome: string;
-  curso: string;
-  semestre: number;
-  cargaHorariaTotal: number;
-  /** @nullable */
-  professor?: string | null;
-}
-
-export interface UpdateDisciplinaBody {
-  nome?: string;
-  curso?: string;
-  semestre?: number;
-  cargaHorariaTotal?: number;
-  /** @nullable */
-  professor?: string | null;
-}
-
 export interface Turma {
   id: number;
-  disciplinaId: number;
+  nome: string;
+  curso: string;
   periodo: string;
   dataInicio: string;
   dataFim: string;
-  /** @nullable */
-  disciplinaNome?: string | null;
-  /** @nullable */
-  curso?: string | null;
 }
 
 export interface TurmaDetalhada {
   id: number;
-  disciplinaId: number;
+  nome: string;
+  curso: string;
   periodo: string;
   dataInicio: string;
   dataFim: string;
-  disciplina: Disciplina;
   totalAlunos: number;
 }
 
 export interface CreateTurmaBody {
-  disciplinaId: number;
+  nome: string;
+  curso: string;
   periodo: string;
   dataInicio: string;
   dataFim: string;
 }
 
 export interface UpdateTurmaBody {
-  disciplinaId?: number;
+  nome?: string;
+  curso?: string;
   periodo?: string;
   dataInicio?: string;
   dataFim?: string;
@@ -408,16 +379,12 @@ export interface RetencaoDetalhada {
   alunoNome: string;
   alunoCurso: string;
   alunoMatricula: string;
-  disciplinaNome: string;
   periodo: string;
 }
 
-export interface DisciplinaFaltasItem {
-  disciplinaNome: string;
-  totalAulas: number;
-  faltas: number;
-  percentualFaltas: number;
-}
+export type RetencaoDetalhadaCompletaDisciplinasItem = {
+  [key: string]: unknown;
+};
 
 export interface RetencaoAuditLog {
   id: number;
@@ -454,9 +421,8 @@ export interface RetencaoDetalhadaCompleta {
   alunoCurso: string;
   alunoMatricula: string;
   alunoValorMensalidade: number;
-  disciplinaNome: string;
   periodo: string;
-  disciplinas: DisciplinaFaltasItem[];
+  disciplinas: RetencaoDetalhadaCompletaDisciplinasItem[];
   timeline: RetencaoAuditLog[];
 }
 
@@ -641,7 +607,7 @@ export interface RelatorioFaltasAluno {
   alunoNome: string;
   curso: string;
   turmaId: number;
-  disciplinaNome: string;
+  turmaNome: string;
   totalAulas: number;
   presencas: number;
   faltas: number;
@@ -650,22 +616,10 @@ export interface RelatorioFaltasAluno {
   emRetencao: boolean;
 }
 
-export interface RelatorioFaltasDisciplina {
-  disciplinaId: number;
-  disciplinaNome: string;
-  curso: string;
-  turmaId: number;
-  periodo: string;
-  totalAlunos: number;
-  mediaPresenca: number;
-  alunosEmRetencao: number;
-}
-
 export interface RelatorioRetencao {
   alunoId: number;
   alunoNome: string;
   curso: string;
-  disciplinaNome: string;
   percentualFaltas: number;
   status: string;
   /** @nullable */
@@ -706,7 +660,7 @@ export interface DashboardStats {
 
 export interface ProximaChamada {
   turmaId: number;
-  disciplinaNome: string;
+  turmaNome: string;
   curso: string;
   periodo: string;
   data: string;
@@ -721,12 +675,8 @@ export type ListAlunosParams = {
   turno?: string;
 };
 
-export type ListDisciplinasParams = {
-  curso?: string;
-};
-
 export type ListTurmasParams = {
-  disciplinaId?: number;
+  curso?: string;
   periodo?: string;
 };
 
@@ -741,7 +691,6 @@ export type ListChamadasParams = {
 export type ListRetencaoParams = {
   curso?: string;
   status?: string;
-  disciplinaId?: number;
 };
 
 export type ListDocumentosParams = {
@@ -763,12 +712,6 @@ export type GetRelatorioFaltasPorAlunoParams = {
   dataFim?: string;
   curso?: string;
   alunoId?: number;
-};
-
-export type GetRelatorioFaltasPorDisciplinaParams = {
-  dataInicio?: string;
-  dataFim?: string;
-  curso?: string;
 };
 
 export type GetRelatorioRetencaoParams = {

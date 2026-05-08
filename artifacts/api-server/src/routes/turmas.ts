@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, turmasTable, disciplinasTable, matriculasTable, alunosTable } from "@workspace/db";
+import { db, turmasTable, matriculasTable, alunosTable } from "@workspace/db";
 import {
   CreateTurmaBody,
   UpdateTurmaBody,
@@ -14,25 +14,16 @@ import {
 const router: IRouter = Router();
 
 router.get("/turmas", async (req, res): Promise<void> => {
-  const { disciplinaId, periodo } = req.query as Record<string, string>;
+  const { curso, periodo } = req.query as Record<string, string>;
 
   const turmas = await db
-    .select({
-      id: turmasTable.id,
-      disciplinaId: turmasTable.disciplinaId,
-      periodo: turmasTable.periodo,
-      dataInicio: turmasTable.dataInicio,
-      dataFim: turmasTable.dataFim,
-      disciplinaNome: disciplinasTable.nome,
-      curso: disciplinasTable.curso,
-    })
+    .select()
     .from(turmasTable)
-    .leftJoin(disciplinasTable, eq(turmasTable.disciplinaId, disciplinasTable.id))
     .where(
-      disciplinaId && periodo
-        ? and(eq(turmasTable.disciplinaId, parseInt(disciplinaId)), eq(turmasTable.periodo, periodo))
-        : disciplinaId
-        ? eq(turmasTable.disciplinaId, parseInt(disciplinaId))
+      curso && periodo
+        ? and(eq(turmasTable.curso, curso), eq(turmasTable.periodo, periodo))
+        : curso
+        ? eq(turmasTable.curso, curso)
         : periodo
         ? eq(turmasTable.periodo, periodo)
         : undefined
@@ -49,15 +40,7 @@ router.post("/turmas", async (req, res): Promise<void> => {
     return;
   }
   const [turma] = await db.insert(turmasTable).values(parsed.data).returning();
-  const [disciplina] = await db
-    .select()
-    .from(disciplinasTable)
-    .where(eq(disciplinasTable.id, turma.disciplinaId));
-  res.status(201).json({
-    ...turma,
-    disciplinaNome: disciplina?.nome ?? null,
-    curso: disciplina?.curso ?? null,
-  });
+  res.status(201).json(turma);
 });
 
 router.get("/turmas/:id/alunos", async (req, res): Promise<void> => {
@@ -112,36 +95,23 @@ router.post("/turmas/:id/matricular", async (req, res): Promise<void> => {
 router.get("/turmas/:id", async (req, res): Promise<void> => {
   const params = GetTurmaParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(404).json({ error: "Turma não encontrada" });
     return;
   }
 
-  const [turma] = await db
-    .select()
-    .from(turmasTable)
-    .where(eq(turmasTable.id, params.data.id));
-
+  const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, params.data.id));
   if (!turma) {
     res.status(404).json({ error: "Turma não encontrada" });
     return;
   }
 
-  const [disciplina] = await db
-    .select()
-    .from(disciplinasTable)
-    .where(eq(disciplinasTable.id, turma.disciplinaId));
-
-  const [{ count }] = await db
+  const rows = await db
     .select({ count: matriculasTable.id })
     .from(matriculasTable)
-    .where(eq(matriculasTable.turmaId, turma.id))
-    .then((rows) => (rows.length > 0 ? rows : [{ count: 0 }]));
+    .where(eq(matriculasTable.turmaId, turma.id));
+  const totalAlunos = rows.length;
 
-  res.json({
-    ...turma,
-    disciplina: disciplina ?? null,
-    totalAlunos: typeof count === "number" ? count : 0,
-  });
+  res.json({ ...turma, totalAlunos });
 });
 
 router.patch("/turmas/:id", async (req, res): Promise<void> => {
@@ -164,11 +134,7 @@ router.patch("/turmas/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Turma não encontrada" });
     return;
   }
-  const [disciplina] = await db
-    .select()
-    .from(disciplinasTable)
-    .where(eq(disciplinasTable.id, turma.disciplinaId));
-  res.json({ ...turma, disciplinaNome: disciplina?.nome ?? null, curso: disciplina?.curso ?? null });
+  res.json(turma);
 });
 
 export default router;

@@ -177,7 +177,7 @@ export default function Dashboard() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-slate-400 font-medium border-b border-slate-100">
-                  <th className="pb-3 pr-4">Disciplina</th>
+                  <th className="pb-3 pr-4">Turma</th>
                   <th className="pb-3 pr-4">Curso</th>
                   <th className="pb-3 pr-4">Data</th>
                   <th className="pb-3 pr-4 text-center">Presentes</th>
@@ -187,7 +187,7 @@ export default function Dashboard() {
               <tbody className="divide-y divide-slate-50">
                 {proximas.map((row, i) => (
                   <tr key={i} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-2.5 pr-4 font-medium text-slate-800">{row.disciplinaNome}</td>
+                    <td className="py-2.5 pr-4 font-medium text-slate-800">{row.turmaNome}</td>
                     <td className="py-2.5 pr-4 text-slate-500">{row.curso}</td>
                     <td className="py-2.5 pr-4 text-slate-500">{formatDate(row.data)}</td>
                     <td className="py-2.5 pr-4 text-center">

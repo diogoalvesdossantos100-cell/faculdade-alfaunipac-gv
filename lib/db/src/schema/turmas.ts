@@ -1,11 +1,11 @@
-import { pgTable, text, serial, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { disciplinasTable } from "./disciplinas";
 
 export const turmasTable = pgTable("turmas", {
   id: serial("id").primaryKey(),
-  disciplinaId: integer("disciplina_id").notNull().references(() => disciplinasTable.id),
+  nome: text("nome").notNull(),
+  curso: text("curso").notNull(),
   periodo: text("periodo").notNull(),
   dataInicio: text("data_inicio").notNull(),
   dataFim: text("data_fim").notNull(),

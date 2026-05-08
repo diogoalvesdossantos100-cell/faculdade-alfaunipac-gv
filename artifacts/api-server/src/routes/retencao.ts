@@ -6,7 +6,6 @@ import {
   retencaoAuditLogTable,
   alunosTable,
   turmasTable,
-  disciplinasTable,
   matriculasTable,
   chamadasTable,
   bapMensalTable,
@@ -25,8 +24,6 @@ import { verifyToken } from "./auth";
 
 const router: IRouter = Router();
 
-// ── helpers ────────────────────────────────────────────────────────────────
-
 function getUserFromRequest(req: import("express").Request): { role: string; nome: string } | null {
   const auth = req.headers.authorization;
   if (!auth?.startsWith("Bearer ")) return null;
@@ -41,9 +38,6 @@ function getUserFromRequest(req: import("express").Request): { role: string; nom
 async function buildDetalhada(r: typeof retencaoTable.$inferSelect) {
   const [aluno] = await db.select().from(alunosTable).where(eq(alunosTable.id, r.alunoId));
   const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, r.turmaId));
-  const [disciplina] = turma
-    ? await db.select().from(disciplinasTable).where(eq(disciplinasTable.id, turma.disciplinaId))
-    : [];
 
   return {
     ...r,
@@ -51,7 +45,6 @@ async function buildDetalhada(r: typeof retencaoTable.$inferSelect) {
     alunoNome: aluno?.nomeCompleto ?? "N/A",
     alunoCurso: aluno?.curso ?? "N/A",
     alunoMatricula: aluno?.matricula ?? "N/A",
-    disciplinaNome: disciplina?.nome ?? "N/A",
     periodo: turma?.periodo ?? "N/A",
   };
 }
@@ -59,28 +52,6 @@ async function buildDetalhada(r: typeof retencaoTable.$inferSelect) {
 async function buildDetalhadaCompleta(r: typeof retencaoTable.$inferSelect) {
   const base = await buildDetalhada(r);
   const [aluno] = await db.select().from(alunosTable).where(eq(alunosTable.id, r.alunoId));
-
-  // Get all turmas for this student and compute faltas per disciplina
-  const matriculas = await db
-    .select({ turmaId: matriculasTable.turmaId })
-    .from(matriculasTable)
-    .where(eq(matriculasTable.alunoId, r.alunoId));
-
-  const disciplinas = [];
-  for (const m of matriculas) {
-    const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, m.turmaId));
-    if (!turma) continue;
-    const [disc] = await db.select().from(disciplinasTable).where(eq(disciplinasTable.id, turma.disciplinaId));
-    const chamadas = await db
-      .select()
-      .from(chamadasTable)
-      .where(and(eq(chamadasTable.turmaId, m.turmaId), eq(chamadasTable.alunoId, r.alunoId)));
-
-    const totalAulas = chamadas.length;
-    const faltas = chamadas.filter((c) => !c.presente).length;
-    const percentualFaltas = totalAulas > 0 ? Math.round((faltas / totalAulas) * 10000) / 100 : 0;
-    disciplinas.push({ disciplinaNome: disc?.nome ?? "N/A", totalAulas, faltas, percentualFaltas });
-  }
 
   const timeline = await db
     .select()
@@ -91,12 +62,10 @@ async function buildDetalhadaCompleta(r: typeof retencaoTable.$inferSelect) {
   return {
     ...base,
     alunoValorMensalidade: parseFloat(aluno?.valorMensalidade ?? "979.00"),
-    disciplinas,
+    disciplinas: [],
     timeline,
   };
 }
-
-// ── state machine ──────────────────────────────────────────────────────────
 
 const TRANSITIONS: Record<
   string,
@@ -195,8 +164,6 @@ const TRANSITIONS: Record<
   },
 };
 
-// ── routes ─────────────────────────────────────────────────────────────────
-
 router.get("/retencao", async (req, res): Promise<void> => {
   const { curso, status } = req.query as Record<string, string>;
 
@@ -251,7 +218,6 @@ router.post("/retencao/:id/acao", async (req, res): Promise<void> => {
     return;
   }
 
-  // Allow Admin to bypass role checks
   if (userRole !== "Admin" && !transition.roles.includes(userRole)) {
     res.status(403).json({
       error: `Papel "${userRole}" não autorizado para a ação "${acao}". Requer: ${transition.roles.join(" ou ")}`,
@@ -270,17 +236,14 @@ router.post("/retencao/:id/acao", async (req, res): Promise<void> => {
     updateData.dataAssinatura = new Date().toISOString().split("T")[0];
   }
 
-  // If encaminhar: set dataNotificacao
   if (acao === "encaminhar") {
     updateData.dataNotificacao = new Date().toISOString().split("T")[0];
   }
 
-  // If reintegrar: update aluno status to Ativo
   if (acao === "reintegrar") {
     await db.update(alunosTable).set({ status: "Ativo" }).where(eq(alunosTable.id, retencao.alunoId));
   }
 
-  // If remover_bap: remove from BAP of current month
   if (acao === "remover_bap") {
     const now = new Date();
     const mes = now.getMonth() + 1;

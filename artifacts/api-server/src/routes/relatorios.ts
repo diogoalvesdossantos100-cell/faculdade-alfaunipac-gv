@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { db, alunosTable, chamadasTable, retencaoTable, documentosTable, turmasTable, disciplinasTable, matriculasTable } from "@workspace/db";
+import { db, alunosTable, chamadasTable, retencaoTable, documentosTable, turmasTable, matriculasTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -30,7 +30,6 @@ router.get("/relatorios/faltas-por-aluno", async (req, res): Promise<void> => {
 
     const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, m.turmaId));
     if (!turma) continue;
-    const [disciplina] = await db.select().from(disciplinasTable).where(eq(disciplinasTable.id, turma.disciplinaId));
 
     const conditions = [eq(chamadasTable.turmaId, m.turmaId), eq(chamadasTable.alunoId, m.alunoId)];
     if (dataInicio) conditions.push(gte(chamadasTable.data, dataInicio));
@@ -53,64 +52,13 @@ router.get("/relatorios/faltas-por-aluno", async (req, res): Promise<void> => {
       alunoNome: aluno.nomeCompleto,
       curso: aluno.curso,
       turmaId: m.turmaId,
-      disciplinaNome: disciplina?.nome ?? "N/A",
+      turmaNome: turma.nome,
       totalAulas,
       presencas,
       faltas,
       faltasJustificadas,
       percentualFaltas: Math.round(percentualFaltas * 100) / 100,
       emRetencao: !!retencao && retencao.status === "Em_Acompanhamento",
-    });
-  }
-
-  res.json(result);
-});
-
-router.get("/relatorios/faltas-por-disciplina", async (req, res): Promise<void> => {
-  const { dataInicio, dataFim, curso } = req.query as Record<string, string>;
-
-  const turmas = await db
-    .select({
-      id: turmasTable.id,
-      periodo: turmasTable.periodo,
-      disciplinaId: turmasTable.disciplinaId,
-    })
-    .from(turmasTable);
-
-  const result = [];
-  for (const turma of turmas) {
-    const [disciplina] = await db.select().from(disciplinasTable).where(eq(disciplinasTable.id, turma.disciplinaId));
-    if (!disciplina) continue;
-    if (curso && disciplina.curso !== curso) continue;
-
-    const matriculas = await db
-      .select()
-      .from(matriculasTable)
-      .where(eq(matriculasTable.turmaId, turma.id));
-
-    const conditions = [eq(chamadasTable.turmaId, turma.id)];
-    if (dataInicio) conditions.push(gte(chamadasTable.data, dataInicio));
-    if (dataFim) conditions.push(lte(chamadasTable.data, dataFim));
-
-    const chamadas = await db.select().from(chamadasTable).where(and(...conditions));
-    const totalPresencas = chamadas.filter((c) => c.presente).length;
-    const total = chamadas.length;
-    const mediaPresenca = total > 0 ? (totalPresencas / total) * 100 : 0;
-
-    const alunosEmRetencao = await db
-      .select()
-      .from(retencaoTable)
-      .where(and(eq(retencaoTable.turmaId, turma.id), eq(retencaoTable.status, "Em_Acompanhamento")));
-
-    result.push({
-      disciplinaId: disciplina.id,
-      disciplinaNome: disciplina.nome,
-      curso: disciplina.curso,
-      turmaId: turma.id,
-      periodo: turma.periodo,
-      totalAlunos: matriculas.length,
-      mediaPresenca: Math.round(mediaPresenca * 100) / 100,
-      alunosEmRetencao: alunosEmRetencao.length,
     });
   }
 
@@ -129,16 +77,10 @@ router.get("/relatorios/retencao", async (req, res): Promise<void> => {
     if (curso && aluno.curso !== curso) continue;
     if (status && r.status !== status) continue;
 
-    const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, r.turmaId));
-    const [disciplina] = turma
-      ? await db.select().from(disciplinasTable).where(eq(disciplinasTable.id, turma.disciplinaId))
-      : [];
-
     result.push({
       alunoId: aluno.id,
       alunoNome: aluno.nomeCompleto,
       curso: aluno.curso,
-      disciplinaNome: disciplina?.nome ?? "N/A",
       percentualFaltas: parseFloat(r.percentualFaltas),
       status: r.status,
       dataNotificacao: r.dataNotificacao ?? null,
@@ -200,34 +142,24 @@ router.get("/relatorios/resumo-mensal", async (req, res): Promise<void> => {
 
     const totalAlunos = alunos.length;
 
-    // Get turmas for this curso
-    const disciplinas = await db
+    const turmasList = await db
       .select()
-      .from(disciplinasTable)
-      .where(eq(disciplinasTable.curso, curso));
+      .from(turmasTable)
+      .where(eq(turmasTable.curso, curso));
 
     let totalPresencas = 0;
     let totalAulas = 0;
 
-    for (const d of disciplinas) {
-      const turmasList = await db
-        .select()
-        .from(turmasTable)
-        .where(eq(turmasTable.disciplinaId, d.id));
-
-      for (const t of turmasList) {
-        const conditions = [eq(chamadasTable.turmaId, t.id)];
-        // Filter by month/year using string comparison (data format: YYYY-MM-DD)
-        if (mes && ano) {
-          const mesStr = String(parseInt(mes)).padStart(2, "0");
-          conditions.push(gte(chamadasTable.data, `${ano}-${mesStr}-01`));
-          conditions.push(lte(chamadasTable.data, `${ano}-${mesStr}-31`));
-        }
-
-        const chamadas = await db.select().from(chamadasTable).where(and(...conditions));
-        totalAulas += chamadas.length;
-        totalPresencas += chamadas.filter((c) => c.presente).length;
+    for (const t of turmasList) {
+      const conditions = [eq(chamadasTable.turmaId, t.id)];
+      if (mes && ano) {
+        const mesStr = String(parseInt(mes)).padStart(2, "0");
+        conditions.push(gte(chamadasTable.data, `${ano}-${mesStr}-01`));
+        conditions.push(lte(chamadasTable.data, `${ano}-${mesStr}-31`));
       }
+      const chamadas = await db.select().from(chamadasTable).where(and(...conditions));
+      totalAulas += chamadas.length;
+      totalPresencas += chamadas.filter((c) => c.presente).length;
     }
 
     const mediaPresenca = totalAulas > 0 ? (totalPresencas / totalAulas) * 100 : 0;

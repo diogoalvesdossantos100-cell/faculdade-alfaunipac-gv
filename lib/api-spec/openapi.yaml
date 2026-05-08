@@ -14,8 +14,6 @@ tags:
     description: Authentication operations
   - name: alunos
     description: Student operations
-  - name: disciplinas
-    description: Discipline operations
   - name: turmas
     description: Class operations
   - name: chamadas
@@ -263,88 +261,6 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   # DISCIPLINAS
-  /disciplinas:
-    get:
-      operationId: listDisciplinas
-      tags: [disciplinas]
-      summary: List all disciplines
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: curso
-          in: query
-          schema:
-            type: string
-      responses:
-        "200":
-          description: List of disciplines
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Disciplina"
-    post:
-      operationId: createDisciplina
-      tags: [disciplinas]
-      summary: Create a discipline
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateDisciplinaBody"
-      responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Disciplina"
-
-  /disciplinas/{id}:
-    patch:
-      operationId: updateDisciplina
-      tags: [disciplinas]
-      summary: Update a discipline
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateDisciplinaBody"
-      responses:
-        "200":
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Disciplina"
-    delete:
-      operationId: deleteDisciplina
-      tags: [disciplinas]
-      summary: Delete a discipline
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "204":
-          description: Deleted
 
   # TURMAS
   /turmas:
@@ -355,10 +271,10 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: disciplinaId
+        - name: curso
           in: query
           schema:
-            type: integer
+            type: string
         - name: periodo
           in: query
           schema:
@@ -615,10 +531,6 @@ paths:
           in: query
           schema:
             type: string
-        - name: disciplinaId
-          in: query
-          schema:
-            type: integer
       responses:
         "200":
           description: List of retention records
@@ -1036,36 +948,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/RelatorioFaltasAluno"
 
-  /relatorios/faltas-por-disciplina:
-    get:
-      operationId: getRelatorioFaltasPorDisciplina
-      tags: [relatorios]
-      summary: Report of absences by discipline
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: dataInicio
-          in: query
-          schema:
-            type: string
-        - name: dataFim
-          in: query
-          schema:
-            type: string
-        - name: curso
-          in: query
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Report data
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/RelatorioFaltasDisciplina"
-
   /relatorios/retencao:
     get:
       operationId: getRelatorioRetencao
@@ -1415,83 +1297,26 @@ components:
         - imported
         - errors
 
-    # Disciplina
-    Disciplina:
-      type: object
-      properties:
-        id:
-          type: integer
-        nome:
-          type: string
-        curso:
-          type: string
-        semestre:
-          type: integer
-        cargaHorariaTotal:
-          type: integer
-        professor:
-          type: ["string", "null"]
-      required:
-        - id
-        - nome
-        - curso
-        - semestre
-        - cargaHorariaTotal
-
-    CreateDisciplinaBody:
-      type: object
-      properties:
-        nome:
-          type: string
-        curso:
-          type: string
-        semestre:
-          type: integer
-        cargaHorariaTotal:
-          type: integer
-        professor:
-          type: ["string", "null"]
-      required:
-        - nome
-        - curso
-        - semestre
-        - cargaHorariaTotal
-
-    UpdateDisciplinaBody:
-      type: object
-      properties:
-        nome:
-          type: string
-        curso:
-          type: string
-        semestre:
-          type: integer
-        cargaHorariaTotal:
-          type: integer
-        professor:
-          type: ["string", "null"]
-
     # Turma
     Turma:
       type: object
       properties:
         id:
           type: integer
-        disciplinaId:
-          type: integer
+        nome:
+          type: string
+        curso:
+          type: string
         periodo:
           type: string
         dataInicio:
           type: string
         dataFim:
           type: string
-        disciplinaNome:
-          type: ["string", "null"]
-        curso:
-          type: ["string", "null"]
       required:
         - id
-        - disciplinaId
+        - nome
+        - curso
         - periodo
         - dataInicio
         - dataFim
@@ -1501,32 +1326,34 @@ components:
       properties:
         id:
           type: integer
-        disciplinaId:
-          type: integer
+        nome:
+          type: string
+        curso:
+          type: string
         periodo:
           type: string
         dataInicio:
           type: string
         dataFim:
           type: string
-        disciplina:
-          $ref: "#/components/schemas/Disciplina"
         totalAlunos:
           type: integer
       required:
         - id
-        - disciplinaId
+        - nome
+        - curso
         - periodo
         - dataInicio
         - dataFim
-        - disciplina
         - totalAlunos
 
     CreateTurmaBody:
       type: object
       properties:
-        disciplinaId:
-          type: integer
+        nome:
+          type: string
+        curso:
+          type: string
         periodo:
           type: string
         dataInicio:
@@ -1534,7 +1361,8 @@ components:
         dataFim:
           type: string
       required:
-        - disciplinaId
+        - nome
+        - curso
         - periodo
         - dataInicio
         - dataFim
@@ -1542,8 +1370,10 @@ components:
     UpdateTurmaBody:
       type: object
       properties:
-        disciplinaId:
-          type: integer
+        nome:
+          type: string
+        curso:
+          type: string
         periodo:
           type: string
         dataInicio:
@@ -1653,7 +1483,7 @@ components:
       properties:
         turmaId:
           type: integer
-        disciplinaNome:
+        turmaNome:
           type: string
         periodo:
           type: string
@@ -1671,7 +1501,7 @@ components:
           type: boolean
       required:
         - turmaId
-        - disciplinaNome
+        - turmaNome
         - periodo
         - totalAulas
         - presencas
@@ -1776,8 +1606,6 @@ components:
           type: string
         alunoMatricula:
           type: string
-        disciplinaNome:
-          type: string
         periodo:
           type: string
       required:
@@ -1791,25 +1619,7 @@ components:
         - alunoNome
         - alunoCurso
         - alunoMatricula
-        - disciplinaNome
         - periodo
-
-    DisciplinaFaltasItem:
-      type: object
-      properties:
-        disciplinaNome:
-          type: string
-        totalAulas:
-          type: integer
-        faltas:
-          type: integer
-        percentualFaltas:
-          type: number
-      required:
-        - disciplinaNome
-        - totalAulas
-        - faltas
-        - percentualFaltas
 
     RetencaoDetalhadaCompleta:
       type: object
@@ -1848,14 +1658,12 @@ components:
           type: string
         alunoValorMensalidade:
           type: number
-        disciplinaNome:
-          type: string
         periodo:
           type: string
         disciplinas:
           type: array
           items:
-            $ref: "#/components/schemas/DisciplinaFaltasItem"
+            type: object
         timeline:
           type: array
           items:
@@ -1872,7 +1680,6 @@ components:
         - alunoCurso
         - alunoMatricula
         - alunoValorMensalidade
-        - disciplinaNome
         - periodo
         - disciplinas
         - timeline
@@ -2181,7 +1988,7 @@ components:
           type: string
         turmaId:
           type: integer
-        disciplinaNome:
+        turmaNome:
           type: string
         totalAulas:
           type: integer
@@ -2200,42 +2007,13 @@ components:
         - alunoNome
         - curso
         - turmaId
-        - disciplinaNome
+        - turmaNome
         - totalAulas
         - presencas
         - faltas
         - faltasJustificadas
         - percentualFaltas
         - emRetencao
-
-    RelatorioFaltasDisciplina:
-      type: object
-      properties:
-        disciplinaId:
-          type: integer
-        disciplinaNome:
-          type: string
-        curso:
-          type: string
-        turmaId:
-          type: integer
-        periodo:
-          type: string
-        totalAlunos:
-          type: integer
-        mediaPresenca:
-          type: number
-        alunosEmRetencao:
-          type: integer
-      required:
-        - disciplinaId
-        - disciplinaNome
-        - curso
-        - turmaId
-        - periodo
-        - totalAlunos
-        - mediaPresenca
-        - alunosEmRetencao
 
     RelatorioRetencao:
       type: object
@@ -2245,8 +2023,6 @@ components:
         alunoNome:
           type: string
         curso:
-          type: string
-        disciplinaNome:
           type: string
         percentualFaltas:
           type: number
@@ -2258,7 +2034,6 @@ components:
         - alunoId
         - alunoNome
         - curso
-        - disciplinaNome
         - percentualFaltas
         - status
 
@@ -2350,7 +2125,7 @@ components:
       properties:
         turmaId:
           type: integer
-        disciplinaNome:
+        turmaNome:
           type: string
         curso:
           type: string
@@ -2364,7 +2139,7 @@ components:
           type: integer
       required:
         - turmaId
-        - disciplinaNome
+        - turmaNome
         - curso
         - periodo
         - data

@@ -271,7 +271,7 @@ export default function Frequencia() {
       <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm mb-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Turma / Disciplina</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Turma</label>
             <select
               value={turmaId ?? ""}
               onChange={(e) => setTurmaId(e.target.value ? parseInt(e.target.value) : null)}
@@ -280,7 +280,7 @@ export default function Frequencia() {
               <option value="">Selecione uma turma...</option>
               {turmas?.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.disciplinaNome} — {t.curso} ({t.periodo})
+                  {t.nome} — {t.curso} ({t.periodo})
                 </option>
               ))}
             </select>

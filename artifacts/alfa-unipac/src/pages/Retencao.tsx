@@ -541,20 +541,12 @@ function DetailModal({
               ))}
             </div>
 
-            {/* Disciplinas com faltas */}
-            {detalhe.disciplinas.length > 0 && (
+            {/* Turma */}
+            {detalhe.periodo && (
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Disciplinas</p>
-                <div className="space-y-2">
-                  {detalhe.disciplinas.map((d) => (
-                    <div key={d.disciplinaNome} className="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-2.5 text-sm">
-                      <span className="font-medium text-slate-700">{d.disciplinaNome}</span>
-                      <div className="flex items-center gap-4 text-xs text-slate-500">
-                        <span>{d.totalAulas} aulas · {d.faltas} faltas</span>
-                        <FaltasBar pct={d.percentualFaltas} />
-                      </div>
-                    </div>
-                  ))}
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Período</p>
+                <div className="bg-slate-50 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700">
+                  {detalhe.periodo}
                 </div>
               </div>
             )}

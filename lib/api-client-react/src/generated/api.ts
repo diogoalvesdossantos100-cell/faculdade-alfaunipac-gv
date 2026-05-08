@@ -26,11 +26,9 @@ import type {
   Chamada,
   CountResponse,
   CreateAlunoBody,
-  CreateDisciplinaBody,
   CreateDocumentoBody,
   CreateTurmaBody,
   DashboardStats,
-  Disciplina,
   Documento,
   DocumentoDetalhado,
   ErrorResponse,
@@ -39,7 +37,6 @@ import type {
   GenerateBapResponse,
   GetRelatorioDocumentosParams,
   GetRelatorioFaltasPorAlunoParams,
-  GetRelatorioFaltasPorDisciplinaParams,
   GetRelatorioResumoMensalParams,
   GetRelatorioRetencaoParams,
   HealthStatus,
@@ -48,7 +45,6 @@ import type {
   ListAlunosParams,
   ListBapParams,
   ListChamadasParams,
-  ListDisciplinasParams,
   ListDocumentosParams,
   ListRetencaoParams,
   ListTurmasParams,
@@ -60,7 +56,6 @@ import type {
   ProximaChamada,
   RelatorioDocumento,
   RelatorioFaltasAluno,
-  RelatorioFaltasDisciplina,
   RelatorioRetencao,
   ResumoMensalCurso,
   Retencao,
@@ -73,7 +68,6 @@ import type {
   TurmaDetalhada,
   UpdateAlunoBody,
   UpdateBapStatusBody,
-  UpdateDisciplinaBody,
   UpdateDocumentoStatusBody,
   UpdateRetencaoBody,
   UpdateTurmaBody,
@@ -833,357 +827,6 @@ export const useImportAlunos = <
   TContext
 > => {
   return useMutation(getImportAlunosMutationOptions(options));
-};
-
-/**
- * @summary List all disciplines
- */
-export const getListDisciplinasUrl = (params?: ListDisciplinasParams) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : value.toString());
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/api/disciplinas?${stringifiedParams}`
-    : `/api/disciplinas`;
-};
-
-export const listDisciplinas = async (
-  params?: ListDisciplinasParams,
-  options?: RequestInit,
-): Promise<Disciplina[]> => {
-  return customFetch<Disciplina[]>(getListDisciplinasUrl(params), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getListDisciplinasQueryKey = (params?: ListDisciplinasParams) => {
-  return [`/api/disciplinas`, ...(params ? [params] : [])] as const;
-};
-
-export const getListDisciplinasQueryOptions = <
-  TData = Awaited<ReturnType<typeof listDisciplinas>>,
-  TError = ErrorType<unknown>,
->(
-  params?: ListDisciplinasParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof listDisciplinas>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey = queryOptions?.queryKey ?? getListDisciplinasQueryKey(params);
-
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listDisciplinas>>> = ({
-    signal,
-  }) => listDisciplinas(params, { signal, ...requestOptions });
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listDisciplinas>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
-};
-
-export type ListDisciplinasQueryResult = NonNullable<
-  Awaited<ReturnType<typeof listDisciplinas>>
->;
-export type ListDisciplinasQueryError = ErrorType<unknown>;
-
-/**
- * @summary List all disciplines
- */
-
-export function useListDisciplinas<
-  TData = Awaited<ReturnType<typeof listDisciplinas>>,
-  TError = ErrorType<unknown>,
->(
-  params?: ListDisciplinasParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof listDisciplinas>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListDisciplinasQueryOptions(params, options);
-
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
-    queryKey: QueryKey;
-  };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-/**
- * @summary Create a discipline
- */
-export const getCreateDisciplinaUrl = () => {
-  return `/api/disciplinas`;
-};
-
-export const createDisciplina = async (
-  createDisciplinaBody: CreateDisciplinaBody,
-  options?: RequestInit,
-): Promise<Disciplina> => {
-  return customFetch<Disciplina>(getCreateDisciplinaUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(createDisciplinaBody),
-  });
-};
-
-export const getCreateDisciplinaMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createDisciplina>>,
-    TError,
-    { data: BodyType<CreateDisciplinaBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof createDisciplina>>,
-  TError,
-  { data: BodyType<CreateDisciplinaBody> },
-  TContext
-> => {
-  const mutationKey = ["createDisciplina"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof createDisciplina>>,
-    { data: BodyType<CreateDisciplinaBody> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return createDisciplina(data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type CreateDisciplinaMutationResult = NonNullable<
-  Awaited<ReturnType<typeof createDisciplina>>
->;
-export type CreateDisciplinaMutationBody = BodyType<CreateDisciplinaBody>;
-export type CreateDisciplinaMutationError = ErrorType<unknown>;
-
-/**
- * @summary Create a discipline
- */
-export const useCreateDisciplina = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createDisciplina>>,
-    TError,
-    { data: BodyType<CreateDisciplinaBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof createDisciplina>>,
-  TError,
-  { data: BodyType<CreateDisciplinaBody> },
-  TContext
-> => {
-  return useMutation(getCreateDisciplinaMutationOptions(options));
-};
-
-/**
- * @summary Update a discipline
- */
-export const getUpdateDisciplinaUrl = (id: number) => {
-  return `/api/disciplinas/${id}`;
-};
-
-export const updateDisciplina = async (
-  id: number,
-  updateDisciplinaBody: UpdateDisciplinaBody,
-  options?: RequestInit,
-): Promise<Disciplina> => {
-  return customFetch<Disciplina>(getUpdateDisciplinaUrl(id), {
-    ...options,
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(updateDisciplinaBody),
-  });
-};
-
-export const getUpdateDisciplinaMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof updateDisciplina>>,
-    TError,
-    { id: number; data: BodyType<UpdateDisciplinaBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof updateDisciplina>>,
-  TError,
-  { id: number; data: BodyType<UpdateDisciplinaBody> },
-  TContext
-> => {
-  const mutationKey = ["updateDisciplina"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof updateDisciplina>>,
-    { id: number; data: BodyType<UpdateDisciplinaBody> }
-  > = (props) => {
-    const { id, data } = props ?? {};
-
-    return updateDisciplina(id, data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type UpdateDisciplinaMutationResult = NonNullable<
-  Awaited<ReturnType<typeof updateDisciplina>>
->;
-export type UpdateDisciplinaMutationBody = BodyType<UpdateDisciplinaBody>;
-export type UpdateDisciplinaMutationError = ErrorType<unknown>;
-
-/**
- * @summary Update a discipline
- */
-export const useUpdateDisciplina = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof updateDisciplina>>,
-    TError,
-    { id: number; data: BodyType<UpdateDisciplinaBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof updateDisciplina>>,
-  TError,
-  { id: number; data: BodyType<UpdateDisciplinaBody> },
-  TContext
-> => {
-  return useMutation(getUpdateDisciplinaMutationOptions(options));
-};
-
-/**
- * @summary Delete a discipline
- */
-export const getDeleteDisciplinaUrl = (id: number) => {
-  return `/api/disciplinas/${id}`;
-};
-
-export const deleteDisciplina = async (
-  id: number,
-  options?: RequestInit,
-): Promise<void> => {
-  return customFetch<void>(getDeleteDisciplinaUrl(id), {
-    ...options,
-    method: "DELETE",
-  });
-};
-
-export const getDeleteDisciplinaMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof deleteDisciplina>>,
-    TError,
-    { id: number },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof deleteDisciplina>>,
-  TError,
-  { id: number },
-  TContext
-> => {
-  const mutationKey = ["deleteDisciplina"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof deleteDisciplina>>,
-    { id: number }
-  > = (props) => {
-    const { id } = props ?? {};
-
-    return deleteDisciplina(id, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type DeleteDisciplinaMutationResult = NonNullable<
-  Awaited<ReturnType<typeof deleteDisciplina>>
->;
-
-export type DeleteDisciplinaMutationError = ErrorType<unknown>;
-
-/**
- * @summary Delete a discipline
- */
-export const useDeleteDisciplina = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof deleteDisciplina>>,
-    TError,
-    { id: number },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof deleteDisciplina>>,
-  TError,
-  { id: number },
-  TContext
-> => {
-  return useMutation(getDeleteDisciplinaMutationOptions(options));
 };
 
 /**
@@ -3464,116 +3107,6 @@ export function useGetRelatorioFaltasPorAluno<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetRelatorioFaltasPorAlunoQueryOptions(
-    params,
-    options,
-  );
-
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
-    queryKey: QueryKey;
-  };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-/**
- * @summary Report of absences by discipline
- */
-export const getGetRelatorioFaltasPorDisciplinaUrl = (
-  params?: GetRelatorioFaltasPorDisciplinaParams,
-) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : value.toString());
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/api/relatorios/faltas-por-disciplina?${stringifiedParams}`
-    : `/api/relatorios/faltas-por-disciplina`;
-};
-
-export const getRelatorioFaltasPorDisciplina = async (
-  params?: GetRelatorioFaltasPorDisciplinaParams,
-  options?: RequestInit,
-): Promise<RelatorioFaltasDisciplina[]> => {
-  return customFetch<RelatorioFaltasDisciplina[]>(
-    getGetRelatorioFaltasPorDisciplinaUrl(params),
-    {
-      ...options,
-      method: "GET",
-    },
-  );
-};
-
-export const getGetRelatorioFaltasPorDisciplinaQueryKey = (
-  params?: GetRelatorioFaltasPorDisciplinaParams,
-) => {
-  return [
-    `/api/relatorios/faltas-por-disciplina`,
-    ...(params ? [params] : []),
-  ] as const;
-};
-
-export const getGetRelatorioFaltasPorDisciplinaQueryOptions = <
-  TData = Awaited<ReturnType<typeof getRelatorioFaltasPorDisciplina>>,
-  TError = ErrorType<unknown>,
->(
-  params?: GetRelatorioFaltasPorDisciplinaParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getRelatorioFaltasPorDisciplina>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey =
-    queryOptions?.queryKey ??
-    getGetRelatorioFaltasPorDisciplinaQueryKey(params);
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getRelatorioFaltasPorDisciplina>>
-  > = ({ signal }) =>
-    getRelatorioFaltasPorDisciplina(params, { signal, ...requestOptions });
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getRelatorioFaltasPorDisciplina>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
-};
-
-export type GetRelatorioFaltasPorDisciplinaQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getRelatorioFaltasPorDisciplina>>
->;
-export type GetRelatorioFaltasPorDisciplinaQueryError = ErrorType<unknown>;
-
-/**
- * @summary Report of absences by discipline
- */
-
-export function useGetRelatorioFaltasPorDisciplina<
-  TData = Awaited<ReturnType<typeof getRelatorioFaltasPorDisciplina>>,
-  TError = ErrorType<unknown>,
->(
-  params?: GetRelatorioFaltasPorDisciplinaParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getRelatorioFaltasPorDisciplina>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetRelatorioFaltasPorDisciplinaQueryOptions(
     params,
     options,
   );

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
 import * as XLSX from "xlsx";
-import { db, alunosTable, chamadasTable, disciplinasTable, matriculasTable, retencaoTable, turmasTable } from "@workspace/db";
+import { db, alunosTable, chamadasTable, matriculasTable, retencaoTable, turmasTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { verifyToken } from "./auth";
 
@@ -143,15 +143,11 @@ router.post("/api/frequencia/import", requireAuth, upload.single("file"), async 
         continue;
       }
 
-      // Get all disciplines for this course
-      const disciplinas = await db.select().from(disciplinasTable).where(eq(disciplinasTable.curso, curso));
-
       // Get all turmas for this course
       const turmas = await db
-        .select({ id: turmasTable.id, disciplinaId: turmasTable.disciplinaId })
+        .select({ id: turmasTable.id })
         .from(turmasTable)
-        .innerJoin(disciplinasTable, eq(turmasTable.disciplinaId, disciplinasTable.id))
-        .where(eq(disciplinasTable.curso, curso));
+        .where(eq(turmasTable.curso, curso));
 
       // Process student rows starting at row index 5
       for (let r = 5; r < aoa.length; r++) {
@@ -190,13 +186,8 @@ router.post("/api/frequencia/import", requireAuth, upload.single("file"), async 
           const discCode = discCodes[di];
           const entries = discMap[discCode];
 
-          // Find matching disciplina (by order/index)
-          const discIndex = di;
-          const disc = disciplinas[discIndex] ?? disciplinas[0];
-          if (!disc) continue;
-
-          // Find matching turma
-          const turma = turmas.find((t) => t.disciplinaId === disc.id && studentTurmaIds.has(t.id));
+          // Find matching turma for student (first turma of this course the student is enrolled in)
+          const turma = turmas.find((t) => studentTurmaIds.has(t.id));
           if (!turma) continue;
 
           for (const { date, presente } of entries) {

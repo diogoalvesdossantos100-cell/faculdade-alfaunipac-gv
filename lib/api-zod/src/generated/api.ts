@@ -101,7 +101,7 @@ export const GetAlunoResponse = zod.object({
   frequencias: zod.array(
     zod.object({
       turmaId: zod.number(),
-      disciplinaNome: zod.string(),
+      turmaNome: zod.string(),
       periodo: zod.string(),
       totalAulas: zod.number(),
       presencas: zod.number(),
@@ -207,80 +207,20 @@ export const ImportAlunosResponse = zod.object({
 });
 
 /**
- * @summary List all disciplines
- */
-export const ListDisciplinasQueryParams = zod.object({
-  curso: zod.coerce.string().optional(),
-});
-
-export const ListDisciplinasResponseItem = zod.object({
-  id: zod.number(),
-  nome: zod.string(),
-  curso: zod.string(),
-  semestre: zod.number(),
-  cargaHorariaTotal: zod.number(),
-  professor: zod.string().nullish(),
-});
-export const ListDisciplinasResponse = zod.array(ListDisciplinasResponseItem);
-
-/**
- * @summary Create a discipline
- */
-export const CreateDisciplinaBody = zod.object({
-  nome: zod.string(),
-  curso: zod.string(),
-  semestre: zod.number(),
-  cargaHorariaTotal: zod.number(),
-  professor: zod.string().nullish(),
-});
-
-/**
- * @summary Update a discipline
- */
-export const UpdateDisciplinaParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const UpdateDisciplinaBody = zod.object({
-  nome: zod.string().optional(),
-  curso: zod.string().optional(),
-  semestre: zod.number().optional(),
-  cargaHorariaTotal: zod.number().optional(),
-  professor: zod.string().nullish(),
-});
-
-export const UpdateDisciplinaResponse = zod.object({
-  id: zod.number(),
-  nome: zod.string(),
-  curso: zod.string(),
-  semestre: zod.number(),
-  cargaHorariaTotal: zod.number(),
-  professor: zod.string().nullish(),
-});
-
-/**
- * @summary Delete a discipline
- */
-export const DeleteDisciplinaParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-/**
  * @summary List all turmas
  */
 export const ListTurmasQueryParams = zod.object({
-  disciplinaId: zod.coerce.number().optional(),
+  curso: zod.coerce.string().optional(),
   periodo: zod.coerce.string().optional(),
 });
 
 export const ListTurmasResponseItem = zod.object({
   id: zod.number(),
-  disciplinaId: zod.number(),
+  nome: zod.string(),
+  curso: zod.string(),
   periodo: zod.string(),
   dataInicio: zod.string(),
   dataFim: zod.string(),
-  disciplinaNome: zod.string().nullish(),
-  curso: zod.string().nullish(),
 });
 export const ListTurmasResponse = zod.array(ListTurmasResponseItem);
 
@@ -288,7 +228,8 @@ export const ListTurmasResponse = zod.array(ListTurmasResponseItem);
  * @summary Create a turma
  */
 export const CreateTurmaBody = zod.object({
-  disciplinaId: zod.number(),
+  nome: zod.string(),
+  curso: zod.string(),
   periodo: zod.string(),
   dataInicio: zod.string(),
   dataFim: zod.string(),
@@ -303,18 +244,11 @@ export const GetTurmaParams = zod.object({
 
 export const GetTurmaResponse = zod.object({
   id: zod.number(),
-  disciplinaId: zod.number(),
+  nome: zod.string(),
+  curso: zod.string(),
   periodo: zod.string(),
   dataInicio: zod.string(),
   dataFim: zod.string(),
-  disciplina: zod.object({
-    id: zod.number(),
-    nome: zod.string(),
-    curso: zod.string(),
-    semestre: zod.number(),
-    cargaHorariaTotal: zod.number(),
-    professor: zod.string().nullish(),
-  }),
   totalAlunos: zod.number(),
 });
 
@@ -326,7 +260,8 @@ export const UpdateTurmaParams = zod.object({
 });
 
 export const UpdateTurmaBody = zod.object({
-  disciplinaId: zod.number().optional(),
+  nome: zod.string().optional(),
+  curso: zod.string().optional(),
   periodo: zod.string().optional(),
   dataInicio: zod.string().optional(),
   dataFim: zod.string().optional(),
@@ -334,12 +269,11 @@ export const UpdateTurmaBody = zod.object({
 
 export const UpdateTurmaResponse = zod.object({
   id: zod.number(),
-  disciplinaId: zod.number(),
+  nome: zod.string(),
+  curso: zod.string(),
   periodo: zod.string(),
   dataInicio: zod.string(),
   dataFim: zod.string(),
-  disciplinaNome: zod.string().nullish(),
-  curso: zod.string().nullish(),
 });
 
 /**
@@ -429,7 +363,7 @@ export const GetFrequenciaAlunoParams = zod.object({
 
 export const GetFrequenciaAlunoResponseItem = zod.object({
   turmaId: zod.number(),
-  disciplinaNome: zod.string(),
+  turmaNome: zod.string(),
   periodo: zod.string(),
   totalAulas: zod.number(),
   presencas: zod.number(),
@@ -460,7 +394,6 @@ export const GetDatasRegistradasResponse = zod.array(
 export const ListRetencaoQueryParams = zod.object({
   curso: zod.coerce.string().optional(),
   status: zod.coerce.string().optional(),
-  disciplinaId: zod.coerce.number().optional(),
 });
 
 export const ListRetencaoResponseItem = zod.object({
@@ -491,7 +424,6 @@ export const ListRetencaoResponseItem = zod.object({
   alunoNome: zod.string(),
   alunoCurso: zod.string(),
   alunoMatricula: zod.string(),
-  disciplinaNome: zod.string(),
   periodo: zod.string(),
 });
 export const ListRetencaoResponse = zod.array(ListRetencaoResponseItem);
@@ -521,16 +453,8 @@ export const GetRetencaoDetalheResponse = zod.object({
   alunoCurso: zod.string(),
   alunoMatricula: zod.string(),
   alunoValorMensalidade: zod.number(),
-  disciplinaNome: zod.string(),
   periodo: zod.string(),
-  disciplinas: zod.array(
-    zod.object({
-      disciplinaNome: zod.string(),
-      totalAulas: zod.number(),
-      faltas: zod.number(),
-      percentualFaltas: zod.number(),
-    }),
-  ),
+  disciplinas: zod.array(zod.object({}).passthrough()),
   timeline: zod.array(
     zod.object({
       id: zod.number(),
@@ -632,16 +556,8 @@ export const ExecutarAcaoRetencaoResponse = zod.object({
   alunoCurso: zod.string(),
   alunoMatricula: zod.string(),
   alunoValorMensalidade: zod.number(),
-  disciplinaNome: zod.string(),
   periodo: zod.string(),
-  disciplinas: zod.array(
-    zod.object({
-      disciplinaNome: zod.string(),
-      totalAulas: zod.number(),
-      faltas: zod.number(),
-      percentualFaltas: zod.number(),
-    }),
-  ),
+  disciplinas: zod.array(zod.object({}).passthrough()),
   timeline: zod.array(
     zod.object({
       id: zod.number(),
@@ -881,7 +797,7 @@ export const GetRelatorioFaltasPorAlunoResponseItem = zod.object({
   alunoNome: zod.string(),
   curso: zod.string(),
   turmaId: zod.number(),
-  disciplinaNome: zod.string(),
+  turmaNome: zod.string(),
   totalAulas: zod.number(),
   presencas: zod.number(),
   faltas: zod.number(),
@@ -891,29 +807,6 @@ export const GetRelatorioFaltasPorAlunoResponseItem = zod.object({
 });
 export const GetRelatorioFaltasPorAlunoResponse = zod.array(
   GetRelatorioFaltasPorAlunoResponseItem,
-);
-
-/**
- * @summary Report of absences by discipline
- */
-export const GetRelatorioFaltasPorDisciplinaQueryParams = zod.object({
-  dataInicio: zod.coerce.string().optional(),
-  dataFim: zod.coerce.string().optional(),
-  curso: zod.coerce.string().optional(),
-});
-
-export const GetRelatorioFaltasPorDisciplinaResponseItem = zod.object({
-  disciplinaId: zod.number(),
-  disciplinaNome: zod.string(),
-  curso: zod.string(),
-  turmaId: zod.number(),
-  periodo: zod.string(),
-  totalAlunos: zod.number(),
-  mediaPresenca: zod.number(),
-  alunosEmRetencao: zod.number(),
-});
-export const GetRelatorioFaltasPorDisciplinaResponse = zod.array(
-  GetRelatorioFaltasPorDisciplinaResponseItem,
 );
 
 /**
@@ -928,7 +821,6 @@ export const GetRelatorioRetencaoResponseItem = zod.object({
   alunoId: zod.number(),
   alunoNome: zod.string(),
   curso: zod.string(),
-  disciplinaNome: zod.string(),
   percentualFaltas: zod.number(),
   status: zod.string(),
   dataNotificacao: zod.string().nullish(),
@@ -1000,7 +892,7 @@ export const GetDashboardStatsResponse = zod.object({
  */
 export const GetProximasChamadasResponseItem = zod.object({
   turmaId: zod.number(),
-  disciplinaNome: zod.string(),
+  turmaNome: zod.string(),
   curso: zod.string(),
   periodo: zod.string(),
   data: zod.string(),

@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, ilike, and, or, sql } from "drizzle-orm";
 import { db, alunosTable } from "@workspace/db";
 import { CreateAlunoBody, UpdateAlunoBody, GetAlunoParams, UpdateAlunoParams, DeleteAlunoParams, ImportAlunosBody } from "@workspace/api-zod";
-import { retencaoTable, turmasTable, disciplinasTable, chamadasTable, documentosTable, matriculasTable } from "@workspace/db";
+import { retencaoTable, turmasTable, chamadasTable, documentosTable, matriculasTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -110,17 +110,11 @@ router.get("/alunos/:id", async (req, res): Promise<void> => {
   const frequencias = [];
   for (const m of matriculas) {
     const turma = await db
-      .select({ id: turmasTable.id, periodo: turmasTable.periodo, disciplinaId: turmasTable.disciplinaId })
+      .select({ id: turmasTable.id, nome: turmasTable.nome, periodo: turmasTable.periodo })
       .from(turmasTable)
       .where(eq(turmasTable.id, m.turmaId))
       .then((r) => r[0]);
     if (!turma) continue;
-
-    const disciplina = await db
-      .select({ nome: disciplinasTable.nome })
-      .from(disciplinasTable)
-      .where(eq(disciplinasTable.id, turma.disciplinaId))
-      .then((r) => r[0]);
 
     const chamadas = await db
       .select()
@@ -140,14 +134,14 @@ router.get("/alunos/:id", async (req, res): Promise<void> => {
 
     frequencias.push({
       turmaId: m.turmaId,
-      disciplinaNome: disciplina?.nome ?? "N/A",
+      turmaNome: turma.nome,
       periodo: turma.periodo,
       totalAulas,
       presencas,
       faltas,
       faltasJustificadas,
       percentualFaltas: Math.round(percentualFaltas * 100) / 100,
-      emRetencao: !!retencao && retencao.status === "Em_Acompanhamento",
+      emRetencao: !!retencao,
     });
   }
 

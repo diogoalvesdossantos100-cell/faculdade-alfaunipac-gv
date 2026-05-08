@@ -1,6 +1,5 @@
 export * from "./users";
 export * from "./alunos";
-export * from "./disciplinas";
 export * from "./turmas";
 export * from "./matriculas";
 export * from "./chamadas";

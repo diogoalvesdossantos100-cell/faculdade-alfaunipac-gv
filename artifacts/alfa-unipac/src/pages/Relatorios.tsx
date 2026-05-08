@@ -1,12 +1,10 @@
 import { useState } from "react";
 import {
   useGetRelatorioFaltasPorAluno,
-  useGetRelatorioFaltasPorDisciplina,
   useGetRelatorioRetencao,
   useGetRelatorioDocumentos,
   useGetRelatorioResumoMensal,
   getGetRelatorioFaltasPorAlunoQueryKey,
-  getGetRelatorioFaltasPorDisciplinaQueryKey,
   getGetRelatorioRetencaoQueryKey,
   getGetRelatorioDocumentosQueryKey,
   getGetRelatorioResumoMensalQueryKey,
@@ -14,7 +12,6 @@ import {
 import { BarChart3, FileDown, FileSpreadsheet } from "lucide-react";
 import {
   exportFaltasAlunoPdf, exportFaltasAlunoXlsx,
-  exportFaltasDisciplinaPdf, exportFaltasDisciplinaXlsx,
   exportRetencaoPdf, exportRetencaoXlsx,
   exportDocumentosPdf, exportDocumentosXlsx,
   exportMensalPdf, exportMensalXlsx,
@@ -25,7 +22,7 @@ const CURSOS = ["Administração", "Enfermagem", "Farmácia", "Fisioterapia", "N
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
-type Tab = "faltas-aluno" | "faltas-disciplina" | "retencao" | "documentos" | "mensal";
+type Tab = "faltas-aluno" | "retencao" | "documentos" | "mensal";
 
 function formatDate(d: string | undefined | null): string {
   if (!d) return "—";
@@ -63,14 +60,12 @@ export default function Relatorios() {
 
   const tabDefs = [
     { key: "faltas-aluno", label: "Faltas por Aluno" },
-    { key: "faltas-disciplina", label: "Faltas por Disciplina" },
     { key: "retencao", label: "Retenção" },
     { key: "documentos", label: "Documentos" },
     { key: "mensal", label: "Resumo Mensal" },
   ] as { key: Tab; label: string }[];
 
   const faParams = { ...(curso ? { curso } : {}), ...(dataInicio ? { dataInicio } : {}), ...(dataFim ? { dataFim } : {}) };
-  const fdParams = { ...(curso ? { curso } : {}), ...(dataInicio ? { dataInicio } : {}), ...(dataFim ? { dataFim } : {}) };
   const retParams = { ...(curso ? { curso } : {}), ...(statusFiltro ? { status: statusFiltro } : {}) };
   const docParams = { ...(dataInicio ? { dataInicio } : {}), ...(dataFim ? { dataFim } : {}) };
   const mesNum = mes ? parseInt(mes) : undefined;
@@ -78,7 +73,6 @@ export default function Relatorios() {
   const mensalParams = { ...(mesNum ? { mes: mesNum } : {}), ...(anoNum ? { ano: anoNum } : {}) };
 
   const { data: faltasAluno, isLoading: faLoading } = useGetRelatorioFaltasPorAluno(faParams, { query: { enabled: tab === "faltas-aluno", queryKey: getGetRelatorioFaltasPorAlunoQueryKey(faParams) } });
-  const { data: faltasDisc, isLoading: fdLoading } = useGetRelatorioFaltasPorDisciplina(fdParams, { query: { enabled: tab === "faltas-disciplina", queryKey: getGetRelatorioFaltasPorDisciplinaQueryKey(fdParams) } });
   const { data: retencao, isLoading: retLoading } = useGetRelatorioRetencao(retParams, { query: { enabled: tab === "retencao", queryKey: getGetRelatorioRetencaoQueryKey(retParams) } });
   const { data: docs, isLoading: docsLoading } = useGetRelatorioDocumentos(docParams, { query: { enabled: tab === "documentos", queryKey: getGetRelatorioDocumentosQueryKey(docParams) } });
   const { data: mensal, isLoading: mensalLoading } = useGetRelatorioResumoMensal(mensalParams, { query: { enabled: tab === "mensal", queryKey: getGetRelatorioResumoMensalQueryKey(mensalParams) } });
@@ -107,7 +101,7 @@ export default function Relatorios() {
 
       {/* Filters + Export */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm mb-5 flex flex-wrap gap-3 items-end">
-        {(tab === "faltas-aluno" || tab === "faltas-disciplina" || tab === "retencao") && (
+        {(tab === "faltas-aluno" || tab === "retencao") && (
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Curso</label>
             <select value={curso} onChange={(e) => setCurso(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-300">
@@ -116,7 +110,7 @@ export default function Relatorios() {
             </select>
           </div>
         )}
-        {(tab === "faltas-aluno" || tab === "faltas-disciplina" || tab === "documentos") && (
+        {(tab === "faltas-aluno" || tab === "documentos") && (
           <>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Data início</label>
@@ -167,13 +161,6 @@ export default function Relatorios() {
               onXlsx={() => { exportFaltasAlunoXlsx(faltasAluno!); toast.success("Excel gerado."); }}
             />
           )}
-          {tab === "faltas-disciplina" && (
-            <ExportButtons
-              disabled={!faltasDisc?.length}
-              onPdf={() => { exportFaltasDisciplinaPdf(faltasDisc!); toast.success("PDF gerado."); }}
-              onXlsx={() => { exportFaltasDisciplinaXlsx(faltasDisc!); toast.success("Excel gerado."); }}
-            />
-          )}
           {tab === "retencao" && (
             <ExportButtons
               disabled={!retencao?.length}
@@ -207,7 +194,7 @@ export default function Relatorios() {
                 <tr className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   <th className="px-5 py-3">Aluno</th>
                   <th className="px-5 py-3">Curso</th>
-                  <th className="px-5 py-3">Disciplina</th>
+                  <th className="px-5 py-3">Turma</th>
                   <th className="px-5 py-3 text-center">Total</th>
                   <th className="px-5 py-3 text-center">Faltas</th>
                   <th className="px-5 py-3 text-center">% Faltas</th>
@@ -219,7 +206,7 @@ export default function Relatorios() {
                   <tr key={i} className="hover:bg-slate-50">
                     <td className="px-5 py-3 font-medium text-slate-800">{r.alunoNome}</td>
                     <td className="px-5 py-3 text-slate-500">{r.curso}</td>
-                    <td className="px-5 py-3 text-slate-600">{r.disciplinaNome}</td>
+                    <td className="px-5 py-3 text-slate-600">{r.turmaNome}</td>
                     <td className="px-5 py-3 text-center text-slate-600">{r.totalAulas}</td>
                     <td className="px-5 py-3 text-center text-slate-600">{r.faltas}</td>
                     <td className="px-5 py-3 text-center">
@@ -237,45 +224,6 @@ export default function Relatorios() {
           )
         )}
 
-        {tab === "faltas-disciplina" && (
-          fdLoading ? <Skeleton /> : !faltasDisc?.length ? <Empty /> : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  <th className="px-5 py-3">Disciplina</th>
-                  <th className="px-5 py-3">Curso</th>
-                  <th className="px-5 py-3">Período</th>
-                  <th className="px-5 py-3 text-center">Alunos</th>
-                  <th className="px-5 py-3 text-center">Média Presença</th>
-                  <th className="px-5 py-3 text-center">Em Retenção</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {faltasDisc.map((r, i) => (
-                  <tr key={i} className="hover:bg-slate-50">
-                    <td className="px-5 py-3 font-medium text-slate-800">{r.disciplinaNome}</td>
-                    <td className="px-5 py-3 text-slate-500">{r.curso}</td>
-                    <td className="px-5 py-3 text-slate-600">{r.periodo}</td>
-                    <td className="px-5 py-3 text-center text-slate-600">{r.totalAlunos}</td>
-                    <td className="px-5 py-3 text-center">
-                      <span className={`font-semibold ${(r.mediaPresenca ?? 0) < 75 ? "text-red-600" : "text-green-700"}`}>
-                        {(r.mediaPresenca ?? 0).toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-center">
-                      {(r.alunosEmRetencao ?? 0) > 0 ? (
-                        <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">{r.alunosEmRetencao}</span>
-                      ) : (
-                        <span className="text-xs text-slate-400">0</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        )}
-
         {tab === "retencao" && (
           retLoading ? <Skeleton /> : !retencao?.length ? <Empty /> : (
             <table className="w-full text-sm">
@@ -283,7 +231,6 @@ export default function Relatorios() {
                 <tr className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   <th className="px-5 py-3">Aluno</th>
                   <th className="px-5 py-3">Curso</th>
-                  <th className="px-5 py-3">Disciplina</th>
                   <th className="px-5 py-3 text-center">% Faltas</th>
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">1ª Notif.</th>
@@ -294,7 +241,6 @@ export default function Relatorios() {
                   <tr key={i} className="hover:bg-slate-50">
                     <td className="px-5 py-3 font-medium text-slate-800">{r.alunoNome}</td>
                     <td className="px-5 py-3 text-slate-500">{r.curso}</td>
-                    <td className="px-5 py-3 text-slate-600">{r.disciplinaNome}</td>
                     <td className="px-5 py-3 text-center font-bold text-red-600">{(r.percentualFaltas ?? 0).toFixed(1)}%</td>
                     <td className="px-5 py-3 text-slate-600">{(r.status ?? "").replace(/_/g, " ")}</td>
                     <td className="px-5 py-3 text-slate-500">{formatDate(r.dataNotificacao)}</td>

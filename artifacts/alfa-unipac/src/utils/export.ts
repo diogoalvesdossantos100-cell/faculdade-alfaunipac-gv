@@ -151,7 +151,7 @@ export function exportRelatorioXlsx(
 export interface FaltasAlunoRow {
   alunoNome: string;
   curso: string;
-  disciplinaNome: string;
+  turmaNome: string;
   totalAulas: number;
   faltas: number;
   percentualFaltas: number;
@@ -161,9 +161,9 @@ export interface FaltasAlunoRow {
 export function exportFaltasAlunoPdf(rows: FaltasAlunoRow[]) {
   exportRelatorioPdf(
     "Relatório de Faltas por Aluno — AlfaUnipac GV",
-    ["Aluno", "Curso", "Disciplina", "Total Aulas", "Faltas", "% Faltas", "Retenção"],
+    ["Aluno", "Curso", "Turma", "Total Aulas", "Faltas", "% Faltas", "Retenção"],
     rows.map((r) => [
-      r.alunoNome, r.curso, r.disciplinaNome,
+      r.alunoNome, r.curso, r.turmaNome,
       r.totalAulas, r.faltas,
       `${r.percentualFaltas.toFixed(1)}%`,
       r.emRetencao ? "Sim" : "Não",
@@ -175,9 +175,9 @@ export function exportFaltasAlunoPdf(rows: FaltasAlunoRow[]) {
 export function exportFaltasAlunoXlsx(rows: FaltasAlunoRow[]) {
   exportRelatorioXlsx(
     "Relatório de Faltas por Aluno — AlfaUnipac GV",
-    ["Aluno", "Curso", "Disciplina", "Total Aulas", "Faltas", "% Faltas", "Em Retenção"],
+    ["Aluno", "Curso", "Turma", "Total Aulas", "Faltas", "% Faltas", "Em Retenção"],
     rows.map((r) => [
-      r.alunoNome, r.curso, r.disciplinaNome,
+      r.alunoNome, r.curso, r.turmaNome,
       r.totalAulas, r.faltas,
       parseFloat(r.percentualFaltas.toFixed(1)),
       r.emRetencao ? "Sim" : "Não",
@@ -222,7 +222,6 @@ export function exportFaltasDisciplinaXlsx(rows: FaltasDisciplinaRow[]) {
 export interface RetencaoRelRow {
   alunoNome: string;
   curso: string;
-  disciplinaNome: string;
   percentualFaltas: number;
   status: string;
   dataNotificacao: string | null;
@@ -231,9 +230,9 @@ export interface RetencaoRelRow {
 export function exportRetencaoPdf(rows: RetencaoRelRow[]) {
   exportRelatorioPdf(
     "Relatório de Retenção — AlfaUnipac GV",
-    ["Aluno", "Curso", "Disciplina", "% Faltas", "Status", "1ª Notif."],
+    ["Aluno", "Curso", "% Faltas", "Status", "1ª Notif."],
     rows.map((r) => [
-      r.alunoNome, r.curso, r.disciplinaNome,
+      r.alunoNome, r.curso,
       `${r.percentualFaltas.toFixed(1)}%`,
       (r.status ?? "").replace(/_/g, " "),
       fmtDate(r.dataNotificacao),
@@ -245,9 +244,9 @@ export function exportRetencaoPdf(rows: RetencaoRelRow[]) {
 export function exportRetencaoXlsx(rows: RetencaoRelRow[]) {
   exportRelatorioXlsx(
     "Relatório de Retenção — AlfaUnipac GV",
-    ["Aluno", "Curso", "Disciplina", "% Faltas", "Status", "1ª Notificação"],
+    ["Aluno", "Curso", "% Faltas", "Status", "1ª Notificação"],
     rows.map((r) => [
-      r.alunoNome, r.curso, r.disciplinaNome,
+      r.alunoNome, r.curso,
       parseFloat(r.percentualFaltas.toFixed(1)),
       (r.status ?? "").replace(/_/g, " "),
       fmtDate(r.dataNotificacao),
