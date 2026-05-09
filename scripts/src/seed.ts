@@ -6,9 +6,6 @@ import {
   turmasTable,
   matriculasTable,
   bapMensalTable,
-  chamadasTable,
-  retencaoTable,
-  retencaoAuditLogTable,
 } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 
@@ -722,134 +719,8 @@ async function seed() {
   console.log(`\n✅ ${totalAlunos} alunos importados com sucesso!`);
   console.log(`✅ BAP de Março 2026 gerada: ${bapRows.length} registros`);
 
-  // ── 4. Chamadas com faltas e registros de Retenção ────────────────────────
-  console.log("\n📋 Criando chamadas e registros de retenção...");
-
-  const aulas = [
-    "2026-03-02","2026-03-03","2026-03-04","2026-03-05","2026-03-06",
-    "2026-03-09","2026-03-10","2026-03-11","2026-03-12","2026-03-13",
-    "2026-03-16","2026-03-17","2026-03-18","2026-03-19","2026-03-20",
-    "2026-03-23","2026-03-24","2026-03-25","2026-03-26","2026-03-27",
-  ];
-
-  const statusDistrib = [
-    { status: "Identificado",            responsavel: "Secretaria",  count: 8 },
-    { status: "Encaminhado",             responsavel: "Retencao",    count: 6 },
-    { status: "Em_Contato",              responsavel: "Retencao",    count: 5 },
-    { status: "Aguardando_Resposta",     responsavel: "Retencao",    count: 4 },
-    { status: "Retorno_Confirmado",      responsavel: "Secretaria",  count: 2 },
-    { status: "Cancelamento_Solicitado", responsavel: "Secretaria",  count: 3 },
-    { status: "Formulario_Preenchido",   responsavel: "Retencao",    count: 2 },
-    { status: "Aguardando_Assinatura",   responsavel: "Coordenacao", count: 3 },
-    { status: "Assinado",                responsavel: "Secretaria",  count: 2 },
-    { status: "Enviado_CRM",             responsavel: "Secretaria",  count: 2 },
-    { status: "Removido_BAP",            responsavel: "Secretaria",  count: 2 },
-    { status: "HBS_Notificado",          responsavel: "Secretaria",  count: 2 },
-    { status: "Encerrado",               responsavel: "Secretaria",  count: 3 },
-    { status: "Reintegrado",             responsavel: "Secretaria",  count: 2 },
-  ];
-
-  let globalIdx = 0;
-  let retencaoCount = 0;
-  let retDistribIdx = 0;
-  let retWithinBucket = 0;
-
-  for (const { turmaId, alunoIds } of turmaAlunosMap) {
-    for (const alunoId of alunoIds) {
-      globalIdx++;
-      const isAtRisk = globalIdx % 8 === 0;
-      const faltasCount = isAtRisk ? 7 : 2;
-
-      const chamadaRows = aulas.map((data, i) => ({
-        turmaId,
-        alunoId,
-        data,
-        presente: i >= faltasCount,
-        justificada: false,
-      }));
-
-      await db.insert(chamadasTable).values(chamadaRows);
-
-      if (isAtRisk && retDistribIdx < statusDistrib.length) {
-        const pct = ((faltasCount / aulas.length) * 100).toFixed(2);
-        const bucket = statusDistrib[retDistribIdx];
-
-        const [ret] = await db.insert(retencaoTable).values({
-          alunoId,
-          turmaId,
-          percentualFaltas: pct,
-          status: bucket.status,
-          responsavel: bucket.responsavel,
-          motivoCancelamento: ["Cancelamento_Solicitado","Formulario_Preenchido","Aguardando_Assinatura","Assinado","Enviado_CRM","Removido_BAP","HBS_Notificado","Encerrado"].includes(bucket.status)
-            ? "Dificuldades financeiras e necessidade de trabalhar em tempo integral"
-            : null,
-          nomeCoordinadora: ["Assinado","Enviado_CRM","Removido_BAP","HBS_Notificado","Encerrado"].includes(bucket.status)
-            ? "Profa. Dra. Ana Lúcia Ferreira"
-            : null,
-          dataAssinatura: ["Assinado","Enviado_CRM","Removido_BAP","HBS_Notificado","Encerrado"].includes(bucket.status)
-            ? "2026-04-10"
-            : null,
-        }).returning();
-
-        const auditEntries: { retencaoId: number; acao: string; observacao: string | null; realizadoPor: string }[] = [
-          { retencaoId: ret.id, acao: "Identificado", observacao: "Aluno flagrado automaticamente por excesso de faltas.", realizadoPor: "Sistema" },
-        ];
-        if (!["Identificado"].includes(bucket.status)) {
-          auditEntries.push({ retencaoId: ret.id, acao: "Encaminhado para Retenção", observacao: "Caso encaminhado para acompanhamento.", realizadoPor: "Secretaria" });
-        }
-        if (["Em_Contato","Aguardando_Resposta","Retorno_Confirmado","Cancelamento_Solicitado","Formulario_Preenchido","Aguardando_Assinatura","Assinado","Enviado_CRM","Removido_BAP","HBS_Notificado","Encerrado","Reintegrado"].includes(bucket.status)) {
-          auditEntries.push({ retencaoId: ret.id, acao: "Contato Registrado", observacao: "Primeiro contato realizado por telefone.", realizadoPor: "Retenção" });
-        }
-        if (["Aguardando_Resposta","Retorno_Confirmado","Cancelamento_Solicitado","Formulario_Preenchido","Aguardando_Assinatura","Assinado","Enviado_CRM","Removido_BAP","HBS_Notificado","Encerrado","Reintegrado"].includes(bucket.status)) {
-          auditEntries.push({ retencaoId: ret.id, acao: "Aguardando Resposta", observacao: "Aluno informado sobre prazo de 5 dias úteis.", realizadoPor: "Retenção" });
-        }
-        if (bucket.status === "Retorno_Confirmado" || bucket.status === "Reintegrado") {
-          auditEntries.push({ retencaoId: ret.id, acao: "Retorno Confirmado", observacao: "Aluno confirmou retorno às aulas.", realizadoPor: "Retenção" });
-        }
-        if (bucket.status === "Reintegrado") {
-          auditEntries.push({ retencaoId: ret.id, acao: "Aluno Reintegrado", observacao: "Aluno reintegrado com sucesso.", realizadoPor: "Secretaria" });
-        }
-        if (["Cancelamento_Solicitado","Formulario_Preenchido","Aguardando_Assinatura","Assinado","Enviado_CRM","Removido_BAP","HBS_Notificado","Encerrado"].includes(bucket.status)) {
-          auditEntries.push({ retencaoId: ret.id, acao: "Cancelamento Solicitado", observacao: "Aluno manifestou desejo de cancelamento.", realizadoPor: "Retenção" });
-        }
-        if (["Formulario_Preenchido","Aguardando_Assinatura","Assinado","Enviado_CRM","Removido_BAP","HBS_Notificado","Encerrado"].includes(bucket.status)) {
-          auditEntries.push({ retencaoId: ret.id, acao: "Formulário Preenchido", observacao: "Formulário de cancelamento registrado.", realizadoPor: "Secretaria" });
-        }
-        if (["Aguardando_Assinatura","Assinado","Enviado_CRM","Removido_BAP","HBS_Notificado","Encerrado"].includes(bucket.status)) {
-          auditEntries.push({ retencaoId: ret.id, acao: "Encaminhado para Assinatura", observacao: "Documento enviado para assinatura da coordenação.", realizadoPor: "Retenção" });
-        }
-        if (["Assinado","Enviado_CRM","Removido_BAP","HBS_Notificado","Encerrado"].includes(bucket.status)) {
-          auditEntries.push({ retencaoId: ret.id, acao: "Documento Assinado", observacao: "Assinado pela Profa. Dra. Ana Lúcia Ferreira em 10/04/2026.", realizadoPor: "Coordenação" });
-        }
-        if (["Enviado_CRM","Removido_BAP","HBS_Notificado","Encerrado"].includes(bucket.status)) {
-          auditEntries.push({ retencaoId: ret.id, acao: "Enviado ao CRM", observacao: "Registro enviado ao sistema CRM.", realizadoPor: "Secretaria" });
-        }
-        if (["Removido_BAP","HBS_Notificado","Encerrado"].includes(bucket.status)) {
-          auditEntries.push({ retencaoId: ret.id, acao: "Removido da BAP", observacao: "Aluno removido da BAP do mês corrente.", realizadoPor: "Secretaria" });
-        }
-        if (["HBS_Notificado","Encerrado"].includes(bucket.status)) {
-          auditEntries.push({ retencaoId: ret.id, acao: "HBS Notificado", observacao: "Hospital Bom Samaritano notificado.", realizadoPor: "Secretaria" });
-        }
-        if (bucket.status === "Encerrado") {
-          auditEntries.push({ retencaoId: ret.id, acao: "Processo Encerrado", observacao: "Processo de cancelamento encerrado.", realizadoPor: "Secretaria" });
-        }
-
-        await db.insert(retencaoAuditLogTable).values(auditEntries);
-
-        retencaoCount++;
-        retWithinBucket++;
-        if (retWithinBucket >= bucket.count) {
-          retDistribIdx++;
-          retWithinBucket = 0;
-        }
-      }
-    }
-  }
-
-  console.log(`✅ Chamadas criadas para ${globalIdx} alunos`);
-  console.log(`✅ ${retencaoCount} registros de retenção criados`);
   console.log("\n🎉 Seed completo!");
-  console.log(`   Turmas: ${turmasDef.length} | Alunos: ${totalAlunos} | Retenção: ${retencaoCount}`);
+  console.log(`   Turmas: ${turmasDef.length} | Alunos: ${totalAlunos}`);
 }
 
 seed().catch((err) => {
