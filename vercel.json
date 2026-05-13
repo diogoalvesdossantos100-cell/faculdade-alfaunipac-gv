@@ -1,0 +1,8 @@
+{
+  "buildCommand": "pnpm --filter @workspace/alfa-unipac run build",
+  "outputDirectory": "artifacts/alfa-unipac/dist/public",
+  "installCommand": "pnpm install",
+  "rewrites": [
+    { "source": "/((?!api).*)", "destination": "/index.html" }
+  ]
+}
