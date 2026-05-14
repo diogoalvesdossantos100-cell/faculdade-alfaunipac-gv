@@ -29,4 +29,4 @@ ENV NODE_ENV=production
 
 EXPOSE 3000
 
-CMD ["node", "--enable-source-maps", "./dist/index.mjs"]
+CMD ["node", "--enable-source-maps", "dist/index.mjs"]
