@@ -1,6 +1,10 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 
+if (!process.env.DATABASE_URL) {
+  logger.warn("DATABASE_URL is not set — all database queries will fail");
+}
+
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
