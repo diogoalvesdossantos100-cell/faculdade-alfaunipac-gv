@@ -28,6 +28,8 @@ tags:
     description: Report operations
   - name: dashboard
     description: Dashboard operations
+  - name: vestibular
+    description: Vestibular enrollment and event operations
 
 paths:
   /healthz:
@@ -1029,6 +1031,538 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ResumoMensalCurso"
+
+  # VESTIBULAR ─────────────────────────────────────────────────────────────────
+
+  # Config (public)
+  /vestibular/config:
+    get:
+      operationId: getVestibularConfig
+      tags: [vestibular]
+      summary: List form active/inactive flags (public)
+      responses:
+        "200":
+          description: Form configuration list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VestibularFormularioConfig"
+
+  /vestibular/config/{formulario}:
+    patch:
+      operationId: updateVestibularConfig
+      tags: [vestibular]
+      summary: Toggle a form on or off (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: formulario
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [vestibular, pesquisa, mba, manchester, portacath, workshop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVestibularConfigBody"
+      responses:
+        "200":
+          description: Updated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularFormularioConfig"
+
+  # Cursos (public read, admin write)
+  /vestibular/cursos:
+    get:
+      operationId: listVestibularCursos
+      tags: [vestibular]
+      summary: List active courses (public)
+      responses:
+        "200":
+          description: Active courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VestibularCurso"
+    post:
+      operationId: createVestibularCurso
+      tags: [vestibular]
+      summary: Add a course (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVestibularCursoBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularCurso"
+
+  /vestibular/cursos/{id}:
+    patch:
+      operationId: updateVestibularCurso
+      tags: [vestibular]
+      summary: Update course (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVestibularCursoBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularCurso"
+    delete:
+      operationId: deleteVestibularCurso
+      tags: [vestibular]
+      summary: Remove course (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # Candidatos
+  /vestibular/candidatos:
+    post:
+      operationId: createVestibularCandidato
+      tags: [vestibular]
+      summary: Submit vestibular inscription form (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVestibularCandidatoBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularCandidato"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      operationId: listVestibularCandidatos
+      tags: [vestibular]
+      summary: List all candidates (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: curso
+          in: query
+          schema:
+            type: string
+        - name: turno
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Candidates list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VestibularCandidato"
+
+  /vestibular/candidatos/{id}:
+    get:
+      operationId: getVestibularCandidato
+      tags: [vestibular]
+      summary: Get candidate by ID (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Candidate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularCandidato"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateVestibularCandidato
+      tags: [vestibular]
+      summary: Update candidate status (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVestibularCandidatoBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularCandidato"
+    delete:
+      operationId: deleteVestibularCandidato
+      tags: [vestibular]
+      summary: Delete candidate (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # Aprovados
+  /vestibular/aprovados:
+    get:
+      operationId: listVestibularAprovados
+      tags: [vestibular]
+      summary: List approved candidates (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Approved list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VestibularAprovado"
+    post:
+      operationId: createVestibularAprovado
+      tags: [vestibular]
+      summary: Add approved candidate (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVestibularAprovadoBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularAprovado"
+
+  /vestibular/aprovados/{id}:
+    patch:
+      operationId: updateVestibularAprovado
+      tags: [vestibular]
+      summary: Update approved candidate (toggle matriculado) (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVestibularAprovadoBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularAprovado"
+    delete:
+      operationId: deleteVestibularAprovado
+      tags: [vestibular]
+      summary: Remove from approved list (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # Pesquisa
+  /vestibular/pesquisa:
+    post:
+      operationId: createVestibularPesquisa
+      tags: [vestibular]
+      summary: Submit interest research form (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVestibularPesquisaBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularPesquisa"
+    get:
+      operationId: listVestibularPesquisa
+      tags: [vestibular]
+      summary: List research submissions (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Research list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VestibularPesquisa"
+
+  /vestibular/pesquisa/{id}:
+    delete:
+      operationId: deleteVestibularPesquisa
+      tags: [vestibular]
+      summary: Delete research entry (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # Event inscriptions (MBA / Manchester / Port-a-Cath / Workshop)
+  /vestibular/inscricoes/mba:
+    post:
+      operationId: createInscricaoMba
+      tags: [vestibular]
+      summary: Submit MBA inscription (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVestibularInscricaoEventoBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularInscricaoEvento"
+    get:
+      operationId: listInscricoesMba
+      tags: [vestibular]
+      summary: List MBA inscriptions (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: MBA list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VestibularInscricaoEvento"
+
+  /vestibular/inscricoes/manchester:
+    post:
+      operationId: createInscricaoManchester
+      tags: [vestibular]
+      summary: Submit Manchester inscription (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVestibularInscricaoEventoBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularInscricaoEvento"
+    get:
+      operationId: listInscricoesManchester
+      tags: [vestibular]
+      summary: List Manchester inscriptions (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Manchester list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VestibularInscricaoEvento"
+
+  /vestibular/inscricoes/portacath:
+    post:
+      operationId: createInscricaoPortaCath
+      tags: [vestibular]
+      summary: Submit Port-a-Cath inscription (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVestibularInscricaoEventoBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularInscricaoEvento"
+    get:
+      operationId: listInscricoesPortaCath
+      tags: [vestibular]
+      summary: List Port-a-Cath inscriptions (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Port-a-Cath list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VestibularInscricaoEvento"
+
+  /vestibular/inscricoes/workshop:
+    post:
+      operationId: createInscricaoWorkshop
+      tags: [vestibular]
+      summary: Submit Workshop inscription (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVestibularInscricaoEventoBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestibularInscricaoEvento"
+    get:
+      operationId: listInscricoesWorkshop
+      tags: [vestibular]
+      summary: List Workshop inscriptions (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Workshop list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VestibularInscricaoEvento"
 
   # DASHBOARD
   /dashboard/stats:
@@ -2145,3 +2679,338 @@ components:
         - data
         - presentes
         - ausentes
+
+    # Generic
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+        - ok
+
+    # Vestibular
+    VestibularFormularioConfig:
+      type: object
+      properties:
+        id:
+          type: integer
+        formulario:
+          type: string
+          enum: [vestibular, pesquisa, mba, manchester, portacath, workshop]
+        ativo:
+          type: boolean
+        updatedAt:
+          type: string
+      required:
+        - id
+        - formulario
+        - ativo
+        - updatedAt
+
+    UpdateVestibularConfigBody:
+      type: object
+      properties:
+        ativo:
+          type: boolean
+      required:
+        - ativo
+
+    VestibularCurso:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        periodo:
+          type: string
+        ativo:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - nome
+        - periodo
+        - ativo
+        - createdAt
+
+    CreateVestibularCursoBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        periodo:
+          type: string
+        ativo:
+          type: boolean
+      required:
+        - nome
+
+    UpdateVestibularCursoBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        periodo:
+          type: string
+        ativo:
+          type: boolean
+
+    VestibularCandidato:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        cpf:
+          type: string
+        rg:
+          type: ["string", "null"]
+        nascimento:
+          type: ["string", "null"]
+        email:
+          type: string
+        telefone:
+          type: string
+        convenio:
+          type: string
+          enum: [colaborador, beneficiario, pagante]
+        colaborador:
+          type: ["string", "null"]
+        curso1:
+          type: string
+        curso2:
+          type: string
+        turno:
+          type: string
+          enum: [Matutino, Vespertino, Noturno]
+        status:
+          type: string
+          enum: [Inscrito, Aprovado, Matriculado, Desistente]
+        createdAt:
+          type: string
+      required:
+        - id
+        - nome
+        - cpf
+        - email
+        - telefone
+        - convenio
+        - curso1
+        - curso2
+        - turno
+        - status
+        - createdAt
+
+    CreateVestibularCandidatoBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        cpf:
+          type: string
+        rg:
+          type: string
+        nascimento:
+          type: string
+        email:
+          type: string
+        telefone:
+          type: string
+        convenio:
+          type: string
+          enum: [colaborador, beneficiario, pagante]
+        colaborador:
+          type: string
+        curso1:
+          type: string
+        curso2:
+          type: string
+        turno:
+          type: string
+          enum: [Matutino, Vespertino, Noturno]
+      required:
+        - nome
+        - cpf
+        - email
+        - telefone
+        - convenio
+        - curso1
+        - curso2
+        - turno
+
+    UpdateVestibularCandidatoBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Inscrito, Aprovado, Matriculado, Desistente]
+        email:
+          type: string
+        telefone:
+          type: string
+
+    VestibularAprovado:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        curso:
+          type: string
+        turno:
+          type: ["string", "null"]
+        matriculado:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - nome
+        - curso
+        - matriculado
+        - createdAt
+
+    CreateVestibularAprovadoBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        curso:
+          type: string
+        turno:
+          type: string
+        matriculado:
+          type: boolean
+      required:
+        - nome
+        - curso
+
+    UpdateVestibularAprovadoBody:
+      type: object
+      properties:
+        matriculado:
+          type: boolean
+        curso:
+          type: string
+        turno:
+          type: string
+
+    VestibularPesquisa:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: ["string", "null"]
+        cpf:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        telefone:
+          type: ["string", "null"]
+        convenio:
+          type: ["string", "null"]
+        colaborador:
+          type: ["string", "null"]
+        curso:
+          type: ["string", "null"]
+        cursoAlternativo:
+          type: ["string", "null"]
+        turno:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - createdAt
+
+    CreateVestibularPesquisaBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        cpf:
+          type: string
+        rg:
+          type: string
+        nascimento:
+          type: string
+        email:
+          type: string
+        telefone:
+          type: string
+        convenio:
+          type: string
+        colaborador:
+          type: string
+        curso:
+          type: string
+        cursoAlternativo:
+          type: string
+        turno:
+          type: string
+
+    VestibularInscricaoEvento:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        cpf:
+          type: string
+        rg:
+          type: ["string", "null"]
+        nascimento:
+          type: ["string", "null"]
+        email:
+          type: string
+        telefone:
+          type: string
+        concluiuGraduacao:
+          type: string
+          enum: ["Sim", "Não"]
+        cursoGraduacao:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - nome
+        - cpf
+        - email
+        - telefone
+        - concluiuGraduacao
+        - createdAt
+
+    CreateVestibularInscricaoEventoBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        cpf:
+          type: string
+        rg:
+          type: string
+        nascimento:
+          type: string
+        email:
+          type: string
+        telefone:
+          type: string
+        concluiuGraduacao:
+          type: string
+          enum: ["Sim", "Não"]
+        cursoGraduacao:
+          type: string
+      required:
+        - nome
+        - cpf
+        - email
+        - telefone
+        - concluiuGraduacao
