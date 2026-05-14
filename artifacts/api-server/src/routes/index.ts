@@ -10,6 +10,7 @@ import bapRouter from "./bap";
 import relatoriosRouter from "./relatorios";
 import dashboardRouter from "./dashboard";
 import importsRouter from "./imports";
+import vestibularRouter from "./vestibular/index";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(documentosRouter);
 router.use(bapRouter);
 router.use(relatoriosRouter);
 router.use(dashboardRouter);
+router.use(vestibularRouter);
 
 export default router;
