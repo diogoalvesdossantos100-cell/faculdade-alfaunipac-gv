@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -20,7 +20,12 @@ export const vestibularCandidatosTable = pgTable("vestibular_candidatos", {
   // 'Inscrito' | 'Aprovado' | 'Matriculado' | 'Desistente'
   status: text("status").notNull().default("Inscrito"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  index("vc_cpf_idx").on(t.cpf),
+  index("vc_status_idx").on(t.status),
+  index("vc_curso1_idx").on(t.curso1),
+  index("vc_curso2_idx").on(t.curso2),
+]);
 
 export const insertVestibularCandidatoSchema = createInsertSchema(vestibularCandidatosTable).omit({ id: true, createdAt: true });
 export type InsertVestibularCandidato = z.infer<typeof insertVestibularCandidatoSchema>;
@@ -52,7 +57,10 @@ export const vestibularAprovadosTable = pgTable("vestibular_aprovados", {
   checkFacial: boolean("check_facial").default(false),
   checkDigitalizado: boolean("check_digitalizado").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  index("va_status_matricula_idx").on(t.statusMatricula),
+  index("va_curso_idx").on(t.curso),
+]);
 
 export const insertVestibularAprovadoSchema = createInsertSchema(vestibularAprovadosTable).omit({ id: true, createdAt: true });
 export type InsertVestibularAprovado = z.infer<typeof insertVestibularAprovadoSchema>;

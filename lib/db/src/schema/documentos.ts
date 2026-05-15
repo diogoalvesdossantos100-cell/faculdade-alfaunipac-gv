@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { alunosTable } from "./alunos";
@@ -14,7 +14,14 @@ export const documentosTable = pgTable("documentos", {
   status: text("status").notNull().default("Pendente"),
   observacao: text("observacao"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  // FK index
+  index("documentos_aluno_id_idx").on(t.alunoId),
+  // Status — filtrado no badge "Pendente" (useGetPendentesCount em Layout)
+  index("documentos_status_idx").on(t.status),
+  // Composite para query: "documentos pendentes de um aluno"
+  index("documentos_aluno_status_idx").on(t.alunoId, t.status),
+]);
 
 export const insertDocumentoSchema = createInsertSchema(documentosTable).omit({ id: true, createdAt: true });
 export type InsertDocumento = z.infer<typeof insertDocumentoSchema>;
