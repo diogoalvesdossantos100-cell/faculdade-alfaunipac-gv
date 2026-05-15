@@ -136,12 +136,12 @@ export default function TabInscritos({ inscritos, todosInscritos, cursos }: {
 
       {/* Filtros */}
       <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-        <input style={S.filterInp} placeholder="Buscar nome, CPF ou e-mail..." value={busca} onChange={e => setBusca(e.target.value)} />
-        <select style={S.filterSel} value={filtroCurso} onChange={e => setFiltroCurso(e.target.value)}>
+        <input className="admin-focus" style={S.filterInp} placeholder="Buscar nome, CPF ou e-mail…" aria-label="Buscar candidatos" value={busca} onChange={e => setBusca(e.target.value)} />
+        <select className="admin-focus" style={S.filterSel} aria-label="Filtrar por curso" value={filtroCurso} onChange={e => setFiltroCurso(e.target.value)}>
           <option value="">Todos os cursos</option>
           {listaCursos.map(c => <option key={c.nome} value={c.nome}>{c.nome}</option>)}
         </select>
-        <select style={S.filterSel} value={filtroConv} onChange={e => setFiltroConv(e.target.value)}>
+        <select className="admin-focus" style={S.filterSel} aria-label="Filtrar por vínculo" value={filtroConv} onChange={e => setFiltroConv(e.target.value)}>
           <option value="">Todos os vínculos</option>
           <option value="colaborador">Colaborador</option>
           <option value="beneficiario">Beneficiário</option>
@@ -199,6 +199,8 @@ export default function TabInscritos({ inscritos, todosInscritos, cursos }: {
             <div style={{ fontSize: 12, color: "rgba(255,255,255,.4)", marginBottom: 18 }}>{modalAprovar.nome}</div>
             <label style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.6)", display: "block", marginBottom: 8 }}>Curso aprovado *</label>
             <select
+              className="admin-focus"
+              aria-label="Curso para aprovação"
               value={cursoAprovar}
               onChange={e => setCursoAprovar(e.target.value)}
               style={{ width: "100%", padding: "10px 14px", border: "1px solid rgba(255,255,255,.1)", borderRadius: 9, fontSize: 13, outline: "none", background: "#0A1128", color: "#fff", marginBottom: 18 }}

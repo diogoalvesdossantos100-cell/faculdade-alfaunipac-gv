@@ -59,7 +59,7 @@ export default function TabPesquisa() {
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar nome, CPF ou curso..." className={`${inp} pl-9 w-full`} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar nome, CPF ou curso…" className={`${inp} pl-9 w-full`} />
         </div>
         <span className="text-sm text-slate-400">{filtered.length} de {pesquisa.length}</span>
         <button onClick={exportar} className="ml-auto flex items-center gap-1.5 px-3 py-2 text-sm bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg border border-white/10 transition-colors">

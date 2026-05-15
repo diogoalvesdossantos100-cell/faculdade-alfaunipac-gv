@@ -75,7 +75,7 @@ export default function TabGerenciarCursos({ cursos }: { cursos: Curso[] }) {
         {FORMS.map(f => {
           const ativo = formsAtivos[f.chave] ?? true;
           return (
-            <div key={f.chave} style={{ background: "#fff", borderRadius: 10, border: `1px solid ${ativo ? f.cor + "44" : "#E2E6F0"}`, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, transition: "all .2s" }}>
+            <div key={f.chave} style={{ background: "#fff", borderRadius: 10, border: `1px solid ${ativo ? f.cor + "44" : "#E2E6F0"}`, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, transition: "border-color .2s, background-color .2s" }}>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: ativo ? f.cor : "#CBD2E8", flexShrink: 0 }} />
@@ -121,6 +121,10 @@ export default function TabGerenciarCursos({ cursos }: { cursos: Curso[] }) {
         <div style={{ fontSize: 11, fontWeight: 700, color: "#8892B0", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 10 }}>Adicionar novo curso</div>
         <div style={{ display: "flex", gap: 10 }}>
           <input
+            className="admin-focus"
+            name="novoCurso"
+            aria-label="Nome do novo curso"
+            autoComplete="off"
             style={{ flex: 1, padding: "8px 12px", border: "1px solid #E2E6F0", borderRadius: 8, fontSize: 13, outline: "none" }}
             placeholder="Nome do curso (ex: Medicina Veterinária)"
             value={novo}

@@ -60,8 +60,8 @@ export default function TabAprovados({ aprovados }: { aprovados: Aprovado[] }) {
   return (
     <div style={{ fontFamily: "'Inter', system-ui, sans-serif", color: "#fff" }}>
       <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-        <input style={S.filterInp} placeholder="Buscar por nome ou CPF..." value={busca} onChange={e => setBusca(e.target.value)} />
-        <select style={S.filterSel} value={filtroCurso} onChange={e => setFiltroCurso(e.target.value)}>
+        <input className="admin-focus" style={S.filterInp} placeholder="Buscar por nome ou CPF…" aria-label="Buscar aprovados" value={busca} onChange={e => setBusca(e.target.value)} />
+        <select className="admin-focus" style={S.filterSel} aria-label="Filtrar por curso" value={filtroCurso} onChange={e => setFiltroCurso(e.target.value)}>
           <option value="">Todos os cursos</option>
           {cursosAprovados.map(c => <option key={c} value={c}>{c}</option>)}
         </select>

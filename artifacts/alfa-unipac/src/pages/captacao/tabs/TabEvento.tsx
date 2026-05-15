@@ -94,7 +94,7 @@ export default function TabEvento({ evento, tipo }: { evento: string; tipo: keyo
   return (
     <div style={{ fontFamily: "'Inter', system-ui, sans-serif", color: "#fff" }}>
       <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-        <input style={S.filterInp} placeholder="Buscar..." value={busca} onChange={e => setBusca(e.target.value)} />
+        <input className="admin-focus" style={S.filterInp} placeholder="Buscar…" aria-label="Buscar inscritos" value={busca} onChange={e => setBusca(e.target.value)} />
         <button style={{ padding: "9px 18px", background: NAVY, color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }} onClick={exportCSV}>Exportar CSV</button>
       </div>
       <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginBottom: 10 }}>{fl.length} inscrito{fl.length !== 1 ? "s" : ""}</div>

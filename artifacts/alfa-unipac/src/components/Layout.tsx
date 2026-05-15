@@ -36,7 +36,7 @@ function NavItem({ href, icon, label, badge }: NavItemProps) {
     <Link href={href}>
       <div
         className={cn(
-          "flex items-center gap-3 px-4 py-2.5 rounded-lg cursor-pointer transition-all duration-150 group",
+          "flex items-center gap-3 px-4 py-2.5 rounded-lg cursor-pointer transition-[background-color,color] duration-150 group",
           active
             ? "bg-cyan-400/15 text-cyan-400 font-medium"
             : "text-slate-300 hover:bg-white/5 hover:text-white"
@@ -45,7 +45,7 @@ function NavItem({ href, icon, label, badge }: NavItemProps) {
         {active && (
           <span className="absolute left-0 w-1 h-8 bg-cyan-400 rounded-r-full" />
         )}
-        <span className={cn("w-5 h-5 flex-shrink-0", active ? "text-cyan-400" : "text-slate-400 group-hover:text-white")}>
+        <span aria-hidden="true" className={cn("w-5 h-5 flex-shrink-0", active ? "text-cyan-400" : "text-slate-400 group-hover:text-white")}>
           {icon}
         </span>
         <span className="flex-1 text-sm">{label}</span>
@@ -83,7 +83,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
           <div className="w-9 h-9 rounded-lg bg-cyan-400 flex items-center justify-center flex-shrink-0">
-            <GraduationCap className="w-5 h-5 text-[#0A192F]" />
+            <GraduationCap aria-hidden="true" className="w-5 h-5 text-[#0A192F]" />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-bold text-white leading-tight">AlfaUnipac GV</p>
@@ -123,6 +123,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               onClick={handleLogout}
               className="text-slate-400 hover:text-red-400 transition-colors"
               title="Sair"
+              aria-label="Sair"
             >
               <LogOut className="w-4 h-4" />
             </button>

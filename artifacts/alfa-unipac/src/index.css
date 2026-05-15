@@ -2,6 +2,21 @@
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
+/* Focus ring para inputs do painel admin (inline-style) */
+.admin-focus:focus-visible {
+  outline: 2px solid rgba(244, 121, 32, 0.55) !important;
+  outline-offset: 1px;
+}
+
+/* Respeitar prefers-reduced-motion nos botões e transições gerais */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
