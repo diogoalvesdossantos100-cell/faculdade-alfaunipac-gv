@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, Download } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { exportRelatorioXlsx } from "@/utils/export";
-import type { Pesquisa } from "../PainelCaptacao";
+import type { Pesquisa } from "../types";
 
 const inp = "bg-[#0F172A] border border-white/10 text-white placeholder-slate-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-400";
 

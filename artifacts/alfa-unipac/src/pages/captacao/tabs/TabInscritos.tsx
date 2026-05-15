@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
-import type { Candidato, Curso } from "../PainelCaptacao";
-import { ORANGE, GREEN, NAVY, CURSOS_OFICIAIS } from "../PainelCaptacao";
+import type { Candidato, Curso } from "../types";
+import { ORANGE, GREEN, NAVY, CURSOS_OFICIAIS } from "../types";
 
 const S = {
   filterInp: { padding: "9px 14px", border: "1px solid rgba(255,255,255,.08)", borderRadius: 9, fontSize: 13, outline: "none", background: "rgba(255,255,255,.04)", color: "#fff", flex: 2, minWidth: 200 } as React.CSSProperties,

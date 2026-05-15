@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
-import { NAVY, ORANGE } from "../PainelCaptacao";
+import { NAVY, ORANGE } from "../types";
 
 type InscricaoEvento = Record<string, string | number | null | undefined>;
 

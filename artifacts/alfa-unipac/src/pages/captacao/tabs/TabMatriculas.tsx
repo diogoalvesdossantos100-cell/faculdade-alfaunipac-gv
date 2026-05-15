@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { exportRelatorioXlsx } from "@/utils/export";
-import type { Aprovado } from "../PainelCaptacao";
+import type { Aprovado } from "../types";
 
 const sel = "bg-[#0F172A] border border-white/10 text-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-400";
 

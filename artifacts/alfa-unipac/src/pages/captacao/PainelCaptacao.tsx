@@ -4,37 +4,16 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth";
 import { apiFetch } from "@/lib/api";
 import { exportRelatorioXlsx } from "@/utils/export";
-import TabComando       from "./tabs/TabComando";
-import TabInscritos     from "./tabs/TabInscritos";
-import TabAprovados     from "./tabs/TabAprovados";
-import TabMatriculas    from "./tabs/TabMatriculas";
-import TabListaChamada  from "./tabs/TabListaChamada";
-import TabPesquisa      from "./tabs/TabPesquisa";
-import TabEvento        from "./tabs/TabEvento";
+import TabComando         from "./tabs/TabComando";
+import TabInscritos       from "./tabs/TabInscritos";
+import TabAprovados       from "./tabs/TabAprovados";
+import TabMatriculas      from "./tabs/TabMatriculas";
+import TabListaChamada    from "./tabs/TabListaChamada";
+import TabPesquisa        from "./tabs/TabPesquisa";
+import TabEvento          from "./tabs/TabEvento";
 import TabGerenciarCursos from "./tabs/TabGerenciarCursos";
-
-// ── Constantes idênticas ao painel original ────────────────────────────────
-export const NAVY   = "#1E2D6B";
-export const ORANGE = "#F47920";
-export const GREEN  = "#1D9E75";
-export const CURSOS_OFICIAIS = ["Administração", "Nutrição", "Fisioterapia", "Farmácia"];
-
-// ── Tipos ─────────────────────────────────────────────────────────────────
-export type Candidato = {
-  id: number; nome: string; cpf: string; rg?: string; nascimento?: string;
-  email: string; telefone: string; convenio: string; colaborador?: string;
-  curso1: string; curso2: string; turno: string; status: string; createdAt: string;
-};
-export type Aprovado = {
-  id: number; nome: string; curso: string; turno: string | null;
-  matriculado: boolean; createdAt: string;
-};
-export type Pesquisa = {
-  id: number; nome: string | null; cpf: string | null; email: string | null;
-  telefone: string | null; convenio: string | null; colaborador: string | null;
-  curso: string | null; cursoAlternativo: string | null; turno: string | null; createdAt: string;
-};
-export type Curso = { id: number; nome: string; periodo: string; ativo: boolean; createdAt: string };
+import { NAVY, ORANGE, GREEN, CURSOS_OFICIAIS } from "./types";
+import type { Candidato, Aprovado, Pesquisa, Curso } from "./types";
 
 // ── Estilos do painel (portados do adminStyles.js original) ───────────────
 const S = {

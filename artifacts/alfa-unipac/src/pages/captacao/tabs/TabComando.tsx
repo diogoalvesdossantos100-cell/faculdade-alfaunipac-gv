@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Candidato, Aprovado, Pesquisa, Curso } from "../PainelCaptacao";
+import type { Candidato, Aprovado, Pesquisa, Curso } from "../types";
 
 // ── Constantes idênticas ao HomeDashboard.jsx original ────────────────────
 const CAP    = 55;

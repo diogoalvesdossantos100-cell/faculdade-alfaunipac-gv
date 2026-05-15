@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
-import type { Curso } from "../PainelCaptacao";
-import { NAVY, ORANGE, GREEN } from "../PainelCaptacao";
+import type { Curso } from "../types";
+import { NAVY, ORANGE, GREEN } from "../types";
 
 const PURPLE = "#534AB7";
 const TEAL   = "#0F6E56";
