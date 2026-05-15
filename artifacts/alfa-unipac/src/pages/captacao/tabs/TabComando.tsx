@@ -1,413 +1,456 @@
-import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
-import type { Candidato, Aprovado, Pesquisa } from "../PainelCaptacao";
+import { useMemo } from "react";
+import type { Candidato, Aprovado, Pesquisa, Curso } from "../PainelCaptacao";
 
-// ── Constantes de negócio ────────────────────────────────────────────────────
-const META        = 55;   // inscritos mínimos para viabilizar uma turma
-const META_IDEAL  = 70;   // inscritos para turma confortável
+// ── Constantes idênticas ao HomeDashboard.jsx original ────────────────────
+const CAP    = 55;
+const GREEN  = "#1D9E75";
+const RED    = "#E24B4A";
+const YELLOW = "#F4C96A";
+const ORANGE = "#F47920";
+const NAVY   = "#1E2D6B";
+const BLUE   = "#378ADD";
+const PURPLE = "#534AB7";
 
-// ── Tipos ────────────────────────────────────────────────────────────────────
-type Inscricao = { id: number; nome: string };
-
-type CursoStat = {
-  curso: string;
-  inscritos: number;
-  aprovados: number;
-  matriculados: number;
-  score: number;
-  turmasViaveis: number;
-  excedente: number;
-  risco: "BAIXO" | "MÉDIO" | "ALTO";
+const CURSO_CFG: Record<string, { icon: string; cor: string; area: string }> = {
+  "Fisioterapia":  { icon: "🦴", cor: "#378ADD", area: "Ciências da Saúde" },
+  "Farmácia":      { icon: "💊", cor: "#534AB7", area: "Ciências da Saúde" },
+  "Administração": { icon: "📊", cor: "#F47920", area: "Ciências Sociais"  },
+  "Nutrição":      { icon: "🥗", cor: "#1D9E75", area: "Ciências da Saúde" },
+  "Enfermagem":    { icon: "🏥", cor: "#E24B4A", area: "Ciências da Saúde" },
+  "Psicologia":    { icon: "🧠", cor: "#885EA5", area: "Ciências da Saúde" },
 };
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-function calcScore(n: number) { return Math.min(100, Math.round((n / META) * 100)); }
+// Keyframes CSS idênticos ao original
+const CSS = `
+  @keyframes hd-pulse  { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @keyframes hd-glow-o { 0%,100%{box-shadow:0 0 28px rgba(244,121,32,.1)} 50%{box-shadow:0 0 56px rgba(244,121,32,.28)} }
+  @keyframes hd-glow-g { 0%,100%{box-shadow:0 0 28px rgba(29,158,117,.08)} 50%{box-shadow:0 0 52px rgba(29,158,117,.24)} }
+  @keyframes hd-fade   { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
 
-function buildCursoStats(
-  candidatos: Candidato[],
-  aprovados: Aprovado[],
-): CursoStat[] {
-  const ins:  Record<string, number> = {};
-  const apro: Record<string, number> = {};
-  const mat:  Record<string, number> = {};
+  .hd-dot-r { animation: hd-pulse 1.3s ease-in-out infinite; }
+  .hd-dot-g { animation: hd-pulse 2.1s ease-in-out infinite; }
+  .hd-dot-y { animation: hd-pulse 1.7s ease-in-out infinite; }
+  .hd-dot-b { animation: hd-pulse 2.5s ease-in-out infinite; }
+  .hd-glow-action { animation: hd-glow-o 2.8s ease-in-out infinite; }
+  .hd-glow-top    { animation: hd-glow-g 2.8s ease-in-out infinite; }
+  .hd-f1 { animation: hd-fade .3s .05s ease both; }
+  .hd-f2 { animation: hd-fade .3s .12s ease both; }
+  .hd-f3 { animation: hd-fade .3s .19s ease both; }
+  .hd-f4 { animation: hd-fade .3s .26s ease both; }
+  .hd-f5 { animation: hd-fade .3s .33s ease both; }
 
-  for (const c of candidatos) ins[c.curso1] = (ins[c.curso1] ?? 0) + 1;
-  for (const a of aprovados)  apro[a.curso] = (apro[a.curso] ?? 0) + 1;
-  for (const a of aprovados.filter(a => a.matriculado)) mat[a.curso] = (mat[a.curso] ?? 0) + 1;
+  .hd-rank:hover  { background: rgba(255,255,255,.04) !important; }
+  .hd-alert:hover { background: rgba(255,255,255,.05) !important; }
+  .hd-prog        { transition: width .9s cubic-bezier(.4,0,.2,1); }
+  .hd-kpi:hover   { border-color: rgba(255,255,255,.16) !important; transform: translateY(-1px); transition: all .18s; }
+  .hd-prog-card:hover { border-color: rgba(255,255,255,.14) !important; transition: border-color .18s; }
+`;
 
-  return Object.entries(ins)
-    .map(([curso, count]) => {
-      const score          = calcScore(count);
-      const turmasViaveis  = Math.floor(count / META);
-      const excedente      = count - META;
-      const risco: CursoStat["risco"] = score >= 100 ? "BAIXO" : score >= 70 ? "MÉDIO" : "ALTO";
-      return { curso, inscritos: count, aprovados: apro[curso] ?? 0, matriculados: mat[curso] ?? 0, score, turmasViaveis, excedente, risco };
-    })
-    .sort((a, b) => b.inscritos - a.inscritos);
+function dot(cls: string, color: string) {
+  return <span className={cls} style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />;
 }
 
-// ── Micro-componentes visuais ────────────────────────────────────────────────
-
-function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
-  const r = (size - 6) / 2;
+function ScoreRing({ pct, color, size = 56 }: { pct: number; color: string; size?: number }) {
+  const r    = (size - 8) / 2;
   const circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
-  const color = score >= 100 ? "#00E5FF" : score >= 70 ? "#FFB800" : "#FF4040";
+  const dash = (Math.min(pct, 100) / 100) * circ;
   return (
-    <svg width={size} height={size} className="rotate-[-90deg]">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={4} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={4}
+    <svg width={size} height={size} style={{ transform: "rotate(-90deg)", flexShrink: 0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth={6} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={6}
         strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-        style={{ filter: `drop-shadow(0 0 6px ${color}80)` }} />
-      <text x="50%" y="52%" textAnchor="middle" dominantBaseline="middle"
-        fill={color} fontSize={size < 60 ? 9 : 11} fontWeight={700}
-        style={{ transform: "rotate(90deg)", transformOrigin: "center", fontFamily: "ui-monospace, monospace" }}>
-        {score}%
+        style={{ transition: "stroke-dasharray .9s cubic-bezier(.4,0,.2,1)" }} />
+      <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central"
+        style={{ fill: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "Inter", transform: "rotate(90deg)", transformOrigin: `${size/2}px ${size/2}px` } as React.CSSProperties}>
+        {pct}%
       </text>
     </svg>
   );
 }
 
-function FunnelBar({ label, value, pct, color }: { label: string; value: number; pct: number; color: string }) {
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="text-3xl font-black text-white tracking-tight" style={{ fontFamily: "ui-monospace, monospace" }}>
-        {value}
-      </div>
-      <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color, boxShadow: `0 0 8px ${color}60` }} />
-      </div>
-      <div className="text-[10px] font-semibold tracking-widest uppercase" style={{ color }}>
-        {label}
-      </div>
-    </div>
-  );
-}
+type CoordStat = {
+  nome: string; op1: number; op2: number; ponderada: number; pct: number;
+  turmas: number; excedente: number; faltam: number;
+  viab: "viavel" | "proxima" | "atencao";
+  cfg: { icon: string; cor: string; area: string };
+  intel: { label: string; color: string };
+};
 
-function RiscoBadge({ risco }: { risco: CursoStat["risco"] }) {
-  const cfg = {
-    BAIXO: { bg: "bg-emerald-500/10", border: "border-emerald-500/30", text: "text-emerald-400", glow: "0 0 12px rgba(0,217,126,0.3)" },
-    MÉDIO: { bg: "bg-amber-500/10",   border: "border-amber-500/30",   text: "text-amber-400",   glow: "0 0 12px rgba(255,184,0,0.3)" },
-    ALTO:  { bg: "bg-red-500/10",     border: "border-red-500/30",     text: "text-red-400",      glow: "0 0 12px rgba(255,64,64,0.3)" },
-  }[risco];
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold tracking-widest rounded border ${cfg.bg} ${cfg.border} ${cfg.text}`}
-      style={{ boxShadow: cfg.glow }}>
-      ● {risco}
-    </span>
-  );
-}
-
-function AlertRow({ label, value, type }: { label: string; value: number; type: "danger" | "warn" | "ok" }) {
-  const color = type === "danger" ? "#FF4040" : type === "warn" ? "#FFB800" : "#00D97E";
-  const bg    = type === "danger" ? "bg-red-500/5 border-red-500/20" : type === "warn" ? "bg-amber-500/5 border-amber-500/20" : "bg-emerald-500/5 border-emerald-500/20";
-  return (
-    <div className={`flex items-center justify-between px-3 py-2 rounded border ${bg}`}>
-      <span className="text-xs text-slate-300 truncate flex-1 mr-2">{label}</span>
-      <span className="text-sm font-black tabular-nums" style={{ color, fontFamily: "ui-monospace, monospace" }}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-// ── Main Component ────────────────────────────────────────────────────────────
-
-export default function TabComando({ candidatos, aprovados, pesquisa }: {
+export default function TabComando({ candidatos, aprovados, pesquisa, mba, manchester, portacath, workshop, cursos }: {
   candidatos: Candidato[]; aprovados: Aprovado[]; pesquisa: Pesquisa[];
+  mba: {id:number}[]; manchester: {id:number}[]; portacath: {id:number}[]; workshop: {id:number}[];
+  cursos: Curso[];
 }) {
-  const { data: mba        = [] } = useQuery<Inscricao[]>({ queryKey: ["vc-mba"],        queryFn: () => apiFetch("/api/vestibular/inscricoes/mba")       });
-  const { data: manchester = [] } = useQuery<Inscricao[]>({ queryKey: ["vc-manchester"], queryFn: () => apiFetch("/api/vestibular/inscricoes/manchester") });
-  const { data: portacath  = [] } = useQuery<Inscricao[]>({ queryKey: ["vc-portacath"],  queryFn: () => apiFetch("/api/vestibular/inscricoes/portacath")  });
-  const { data: workshop   = [] } = useQuery<Inscricao[]>({ queryKey: ["vc-workshop"],   queryFn: () => apiFetch("/api/vestibular/inscricoes/workshop")   });
+  const cursosNomes = cursos.length > 0 ? cursos.map(c => c.nome) : Object.keys(CURSO_CFG);
 
-  const stats    = buildCursoStats(candidatos, aprovados);
-  const hero     = stats.find(c => c.score >= 100) ?? stats[0];
-  const totalMat = aprovados.filter(a => a.matriculado).length;
+  const stats = useMemo<CoordStat[]>(() => cursosNomes.map(nome => {
+    const op1       = candidatos.filter(c => c.curso1 === nome).length;
+    const op2       = candidatos.filter(c => c.curso2 === nome).length;
+    const ponderada = Math.round(op1 + op2 * 0.5);
+    const pct       = Math.round((ponderada / CAP) * 100);
+    const turmas    = Math.floor(ponderada / CAP);
+    const excedente = ponderada % CAP;
+    const faltam    = excedente > 0 ? CAP - excedente : 0;
+    const viab: CoordStat["viab"] = pct >= 100 ? "viavel" : pct >= 70 ? "proxima" : "atencao";
+    const cfg  = CURSO_CFG[nome] || { icon: "📚", cor: "#8892B0", area: "Outros" };
+    const intel = pct >= 90 ? { label: "ABRE AGORA", color: GREEN  }
+                : pct >= 70 ? { label: "PRÓXIMO",    color: YELLOW }
+                : pct >= 40 ? { label: "ATENÇÃO",    color: ORANGE }
+                :             { label: "RISCO",       color: RED    };
+    return { nome, op1, op2, ponderada, pct, turmas, excedente, faltam, viab, cfg, intel };
+  }).sort((a, b) => b.ponderada - a.ponderada), [candidatos, cursos]);
 
-  const taxaAprova = candidatos.length > 0 ? Math.round((aprovados.length / candidatos.length) * 100) : 0;
-  const taxaMat    = aprovados.length   > 0 ? Math.round((totalMat       / aprovados.length)   * 100) : 0;
+  const top           = stats[0];
+  const maxPond       = Math.max(...stats.map(c => c.ponderada), 1);
+  const viaveis       = stats.filter(c => c.viab === "viavel");
+  const proximos      = stats.filter(c => c.viab === "proxima");
+  const criticos      = stats.filter(c => c.viab === "atencao");
+  const matriculados  = aprovados.filter(a => a.matriculado).length;
+  const emAprovacao   = aprovados.filter(a => !a.matriculado).length;
+  const convAprov     = candidatos.length > 0 ? Math.round(aprovados.length / candidatos.length * 100) : 0;
+  const convMatr      = aprovados.length  > 0 ? Math.round(matriculados / aprovados.length * 100) : 0;
+  const totalPrograms = mba.length + manchester.length + portacath.length + workshop.length;
+  const totalAlertas  = criticos.length + proximos.length;
 
-  const criticos  = stats.filter(c => c.score < 70);
-  const acimaMeta = stats.filter(c => c.inscritos >= META_IDEAL);
-  const abaixo    = stats.filter(c => c.score >= 70 && c.inscritos < META_IDEAL);
+  const programs = [
+    { label: "MBA Cuidados Paliativos",   icon: "🏥", count: mba.length,        cor: "#534AB7", key: "mba"       },
+    { label: "Protocolo Manchester",       icon: "🩺", count: manchester.length,  cor: "#1D9E75", key: "manchester" },
+    { label: "Capacitação Port-a-Cath",   icon: "💉", count: portacath.length,   cor: "#0092B3", key: "portacath"  },
+    { label: "Workshop Hospitalar",        icon: "🏛️", count: workshop.length,    cor: "#C07E00", key: "workshop"   },
+  ];
 
-  const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
-  // dot-grid bg
-  const gridBg: React.CSSProperties = {
-    backgroundImage: "radial-gradient(rgba(0,229,255,0.04) 1px, transparent 1px)",
-    backgroundSize: "28px 28px",
-  };
+  const rec = top
+    ? top.viab === "viavel"
+      ? `Abrir turma de ${top.nome} imediatamente — ${top.ponderada} alunos ponderados`
+      : top.viab === "proxima"
+      ? `Intensificar captação de ${top.nome} — faltam ${top.faltam} para a meta`
+      : `Ação urgente em ${top.nome} — demanda abaixo do mínimo`
+    : "Aguardando dados de inscrições";
 
   return (
-    <div className="relative min-h-full p-5 space-y-4" style={{ background: "#020B18", ...gridBg }}>
+    <div style={{ fontFamily: "'Inter', system-ui, sans-serif", color: "#fff" }}>
+      <style>{CSS}</style>
 
-      {/* ── Status bar ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 px-4 py-2 rounded-lg border border-white/[0.04] bg-white/[0.02]">
-        <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" style={{ boxShadow: "0 0 6px #00D97E" }} />
-          <span className="text-[10px] font-semibold text-emerald-400 tracking-widest uppercase">Sistema Ativo</span>
-        </div>
-        <div className="w-px h-3 bg-white/10" />
-        <span className="text-[10px] text-slate-500 font-mono">VESTIBULAR 2026/2</span>
-        <div className="flex-1" />
-        <span className="text-[10px] text-slate-500 font-mono">{candidatos.length} registros carregados</span>
-        <div className="w-px h-3 bg-white/10" />
-        <span className="text-[10px] text-slate-500 font-mono">{now}</span>
-      </div>
+      {/* ═══ HERO EXECUTIVO ═══════════════════════════════════════════════ */}
+      <div style={{ background: "linear-gradient(135deg,#050A15 0%,#080E22 45%,#0A1230 100%)", borderRadius: 20, border: "1px solid rgba(255,255,255,.07)", overflow: "hidden", marginBottom: 20, position: "relative" }}>
+        {/* Grade decorativa */}
+        <div style={{ position: "absolute", inset: 0, opacity: .025, backgroundImage: "linear-gradient(rgba(255,255,255,.8) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.8) 1px,transparent 1px)", backgroundSize: "36px 36px", pointerEvents: "none" }} />
+        {/* Glow blob */}
+        <div style={{ position: "absolute", top: -80, left: "30%", width: 500, height: 300, borderRadius: "50%", background: "rgba(56,138,221,.05)", filter: "blur(60px)", pointerEvents: "none" }} />
 
-      {/* ── Hero + Lateral ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        {/* Hero */}
-        {hero && (
-          <div className="lg:col-span-2 relative overflow-hidden rounded-xl border border-cyan-400/20 bg-[#040F1E]"
-            style={{ boxShadow: "0 0 60px rgba(0,229,255,0.06), inset 0 1px 0 rgba(0,229,255,0.08)" }}>
-            {/* corner glow */}
-            <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none"
-              style={{ background: "radial-gradient(circle, rgba(0,229,255,0.05) 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
-
-            <div className="relative p-5 space-y-4">
-              <div className="flex items-start justify-between">
+        <div style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "1fr auto", gap: 0 }}>
+          {/* Lado esquerdo */}
+          <div style={{ padding: "36px 40px", borderRight: "1px solid rgba(255,255,255,.06)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+              {dot("hd-dot-g", GREEN)}
+              <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: ".15em" }}>
+                Cockpit Acadêmico · Polo GV · 2026/2
+              </span>
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,.25)", textTransform: "uppercase", letterSpacing: ".12em", marginBottom: 10 }}>⚡ Ação recomendada</div>
+            <div className="hd-glow-action hd-f1" style={{ background: "rgba(244,121,32,.08)", border: "1px solid rgba(244,121,32,.2)", borderRadius: 16, padding: "20px 24px", marginBottom: 24, display: "inline-block", maxWidth: 580 }}>
+              <div style={{ fontSize: "clamp(18px,2.4vw,28px)", fontWeight: 900, color: "#fff", letterSpacing: "-.03em", lineHeight: 1.15, marginBottom: 10 }}>
+                {rec}
+              </div>
+              {top && (
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11, color: ORANGE, fontWeight: 700 }}>🎯 {top.pct}% da meta</span>
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,.4)", fontWeight: 600 }}>·</span>
+                  <span style={{ fontSize: 11, color: GREEN, fontWeight: 700 }}>✓ {top.turmas} turma{top.turmas !== 1 ? "s" : ""} viável{top.turmas !== 1 ? "is" : ""}</span>
+                  {top.excedente > 0 && <>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,.4)" }}>·</span>
+                    <span style={{ fontSize: 11, color: YELLOW, fontWeight: 700 }}>⚡ {top.excedente} excedentes</span>
+                  </>}
+                </div>
+              )}
+            </div>
+            {top && (
+              <div className="hd-f2" style={{ display: "flex", alignItems: "center", gap: 20 }}>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[9px] font-black tracking-[0.2em] text-cyan-400/70 uppercase">◈ Recomendação Operacional</span>
-                    <span className="text-[9px] font-black tracking-widest px-2 py-0.5 rounded bg-cyan-400/10 border border-cyan-400/30 text-cyan-400"
-                      style={{ boxShadow: "0 0 8px rgba(0,229,255,0.2)" }}>
-                      URGENTE
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 6 }}>Probabilidade de abertura</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <ScoreRing pct={Math.min(top.pct, 100)} color={top.intel.color} size={64} />
+                    <div>
+                      <div style={{ fontSize: 20, fontWeight: 900, color: top.intel.color }}>{top.intel.label}</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,.35)", marginTop: 3 }}>Score: {Math.min(top.pct, 100)}/100</div>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ width: 1, height: 60, background: "rgba(255,255,255,.08)" }} />
+                <div>
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 6 }}>Risco operacional</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {dot(criticos.length > 0 ? "hd-dot-r" : "hd-dot-g", criticos.length > 0 ? RED : GREEN)}
+                    <span style={{ fontSize: 16, fontWeight: 800, color: criticos.length > 0 ? RED : GREEN }}>
+                      {criticos.length > 0 ? `${criticos.length} curso${criticos.length > 1 ? "s" : ""} em risco` : "Operação estável"}
                     </span>
                   </div>
-                  <h2 className="text-lg font-black text-white leading-tight">
-                    Abrir turma de{" "}
-                    <span className="text-cyan-400" style={{ textShadow: "0 0 20px rgba(0,229,255,0.4)" }}>
-                      {hero.curso}
-                    </span>
-                    {" "}imediatamente
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {hero.turmasViaveis > 1
-                      ? `Demanda suficiente para ${hero.turmasViaveis} turmas simultâneas`
-                      : "Demanda suficiente para abertura imediata"}
-                  </p>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,.35)", marginTop: 3 }}>
+                    {proximos.length} próximos da meta · {viaveis.length} viáveis
+                  </div>
                 </div>
-                <ScoreRing score={hero.score} size={72} />
               </div>
+            )}
+          </div>
 
-              {/* Métricas do hero */}
-              <div className="grid grid-cols-3 gap-3">
+          {/* KPIs coluna direita */}
+          <div style={{ display: "grid", gridTemplateRows: "repeat(3,1fr)", width: 220 }}>
+            {[
+              { label: "Pré-inscritos", val: candidatos.length, sub: "total geral",          color: "#7DC5FF", accent: BLUE   },
+              { label: "Em aprovação",  val: emAprovacao,        sub: "aguardando matrícula", color: YELLOW,    accent: YELLOW },
+              { label: "Matriculados",  val: matriculados,       sub: "confirmados",          color: GREEN,     accent: GREEN  },
+            ].map(({ label, val, sub, color, accent }) => (
+              <div key={label} style={{ padding: "20px 22px", borderBottom: "1px solid rgba(255,255,255,.05)", borderLeft: "none" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,.28)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 8 }}>{label}</div>
+                <div style={{ fontSize: 30, fontWeight: 900, color, lineHeight: 1, letterSpacing: "-.03em" }}>{val}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,.25)", marginTop: 5 }}>{sub}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ CENTRAL DE ALERTAS + FUNIL + PROGRAMAS ══════════════════════ */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 240px 1fr", gap: 14, marginBottom: 20 }}>
+
+        {/* Central de alertas */}
+        <div className="hd-f3" style={{ background: "#0A1128", borderRadius: 16, border: "1px solid rgba(255,255,255,.07)", overflow: "hidden" }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,.06)", display: "flex", alignItems: "center", gap: 10 }}>
+            {dot("hd-dot-r", RED)}
+            <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: ".12em" }}>Central de alertas</span>
+            {totalAlertas > 0 && <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 800, color: RED, background: "rgba(226,75,74,.12)", border: "1px solid rgba(226,75,74,.25)", borderRadius: 20, padding: "2px 8px" }}>{totalAlertas}</span>}
+          </div>
+          <div style={{ padding: "12px 8px" }}>
+            {criticos.length === 0 && proximos.length === 0 && viaveis.length === 0 && (
+              <div style={{ padding: "20px", textAlign: "center" }}>
+                <div style={{ fontSize: 22, marginBottom: 8 }}>✅</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: GREEN }}>Operação estável</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", marginTop: 4 }}>Nenhum curso em risco</div>
+              </div>
+            )}
+            {[
+              ...criticos.map(c => ({ ...c, dotCls: "hd-dot-r", dotColor: RED,    msg: `${c.faltam} alunos para viabilizar` })),
+              ...proximos.map(c => ({ ...c, dotCls: "hd-dot-y", dotColor: YELLOW,  msg: `${c.faltam} alunos para completar` })),
+              ...viaveis.map(c  => ({ ...c, dotCls: "hd-dot-g", dotColor: GREEN,   msg: `${c.turmas} turma${c.turmas !== 1 ? "s" : ""} confirmada${c.turmas !== 1 ? "s" : ""}` })),
+            ].map(item => (
+              <div key={item.nome} className="hd-alert" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 10, marginBottom: 2 }}>
+                {dot(item.dotCls, item.dotColor)}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.nome}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", marginTop: 1 }}>{item.msg}</div>
+                </div>
+                <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 800, color: item.dotColor, flexShrink: 0 }}>{item.pct}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Funil */}
+        <div className="hd-f4" style={{ background: "#0A1128", borderRadius: 16, border: "1px solid rgba(255,255,255,.07)", padding: "16px", display: "flex", flexDirection: "column" }}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: ".12em", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            {dot("hd-dot-b", BLUE)}Funil
+          </div>
+          {[
+            { label: "Inscritos",    val: candidatos.length, color: BLUE,   pct: 100,      width: "100%"          },
+            { label: "Aprovados",    val: aprovados.length,  color: YELLOW, pct: convAprov, width: `${convAprov}%` },
+            { label: "Matriculados", val: matriculados,       color: GREEN,  pct: convMatr,  width: `${convMatr}%`  },
+          ].map(({ label, val, color, pct, width }, i) => (
+            <div key={label} style={{ marginBottom: i < 2 ? 14 : 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,.5)" }}>{label}</span>
+                <span style={{ fontSize: 14, fontWeight: 900, color }}>{val}</span>
+              </div>
+              <div style={{ height: 5, background: "rgba(255,255,255,.06)", borderRadius: 3, overflow: "hidden" }}>
+                <div className="hd-prog" style={{ height: "100%", width, background: color, borderRadius: 3 }} />
+              </div>
+              {i < 2 && <div style={{ fontSize: 9, color: "rgba(255,255,255,.25)", marginTop: 3, textAlign: "right" }}>
+                {i === 0 ? `${convAprov}% aprovados` : `${convMatr}% matriculados`}
+              </div>}
+            </div>
+          ))}
+          {candidatos.length > 0 && (
+            <div style={{ marginTop: "auto", paddingTop: 14, borderTop: "1px solid rgba(255,255,255,.05)" }}>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,.28)", textTransform: "uppercase", letterSpacing: ".09em", marginBottom: 4 }}>Conversão geral</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: ORANGE }}>{Math.round(matriculados / candidatos.length * 100)}%</div>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,.25)" }}>inscrito → matriculado</div>
+            </div>
+          )}
+        </div>
+
+        {/* Programas executivos */}
+        <div className="hd-f5" style={{ background: "#0A1128", borderRadius: 16, border: "1px solid rgba(255,255,255,.07)", overflow: "hidden" }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,.06)", display: "flex", alignItems: "center", gap: 10 }}>
+            {dot("hd-dot-b", PURPLE)}
+            <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: ".12em" }}>Programas executivos</span>
+            <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,.4)" }}>{totalPrograms} total</span>
+          </div>
+          <div style={{ padding: "12px 8px" }}>
+            {programs.map(p => (
+              <div key={p.key} className="hd-prog-card" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, border: "1px solid transparent", marginBottom: 4 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 9, background: `${p.cor}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{p.icon}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,.75)", lineHeight: 1.3 }}>{p.label}</div>
+                  <div style={{ height: 3, background: "rgba(255,255,255,.06)", borderRadius: 2, marginTop: 6, overflow: "hidden" }}>
+                    <div className="hd-prog" style={{ height: "100%", width: p.count > 0 ? `${Math.min((p.count / 30) * 100, 100)}%` : "0%", background: p.cor, borderRadius: 2 }} />
+                  </div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: p.count > 0 ? p.cor : "rgba(255,255,255,.2)", lineHeight: 1 }}>{p.count}</div>
+                  <div style={{ fontSize: 8, color: p.count > 0 ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.18)", marginTop: 2, fontWeight: 600, textTransform: "uppercase" }}>
+                    {p.count > 0 ? "inscritos" : "aguard."}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ RANKING EXECUTIVO DE CURSOS ══════════════════════════════════ */}
+      <div style={{ background: "#0A1128", borderRadius: 16, border: "1px solid rgba(255,255,255,.07)", overflow: "hidden", marginBottom: 20 }}>
+        <div style={{ padding: "18px 24px", borderBottom: "1px solid rgba(255,255,255,.06)", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: ".14em" }}>Ranking executivo · viabilidade por curso</span>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.06)" }} />
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,.3)" }}>Meta: {CAP} alunos/turma</span>
+        </div>
+        {stats.length === 0 ? (
+          <div style={{ padding: "48px 24px", textAlign: "center" }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,.4)" }}>Captação ativa</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,.25)", marginTop: 6 }}>Aguardando inscrições para análise de viabilidade</div>
+          </div>
+        ) : stats.map((c, i) => {
+          const metaW = `${Math.min(c.pct, 100)}%`;
+          return (
+            <div key={c.nome} className="hd-rank" style={{ display: "grid", gridTemplateColumns: "44px 40px 200px 1fr 180px 140px", alignItems: "center", gap: 16, padding: "16px 24px", borderBottom: "1px solid rgba(255,255,255,.04)", background: "transparent" }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: "rgba(255,255,255,.18)", textAlign: "center" }}>#{i + 1}</div>
+              <ScoreRing pct={Math.min(c.pct, 100)} color={c.intel.color} size={40} />
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>{c.cfg.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{c.nome}</div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", marginTop: 1 }}>{c.cfg.area}</div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, color: "rgba(255,255,255,.35)", fontWeight: 600 }}>op1: {c.op1}</span>
+                  <span style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>·</span>
+                  <span style={{ fontSize: 10, color: "rgba(255,255,255,.35)", fontWeight: 600 }}>op2: {c.op2}</span>
+                  <span style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>·</span>
+                  <span style={{ fontSize: 10, color: ORANGE, fontWeight: 700 }}>pond: {c.ponderada}</span>
+                </div>
+                <div style={{ height: 6, background: "rgba(255,255,255,.06)", borderRadius: 3, overflow: "hidden" }}>
+                  <div className="hd-prog" style={{ height: "100%", width: metaW, background: `linear-gradient(90deg, ${c.cfg.cor}, ${c.intel.color})`, borderRadius: 3 }} />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
                 {[
-                  { label: "Score de Viabilidade", value: `${hero.score}%`, color: "#00E5FF" },
-                  { label: "Excedente da Meta",    value: hero.excedente > 0 ? `+${hero.excedente}` : String(hero.excedente), color: hero.excedente > 0 ? "#00D97E" : "#FF4040" },
-                  { label: "Turmas Viáveis",       value: String(hero.turmasViaveis), color: "#00E5FF" },
-                ].map(m => (
-                  <div key={m.label} className="bg-white/[0.03] border border-white/[0.05] rounded-lg p-3">
-                    <p className="text-[9px] font-semibold tracking-widest text-slate-500 uppercase mb-1">{m.label}</p>
-                    <p className="text-2xl font-black tabular-nums" style={{ color: m.color, fontFamily: "ui-monospace, monospace", textShadow: `0 0 16px ${m.color}50` }}>
-                      {m.value}
-                    </p>
+                  { val: c.turmas,    label: "turmas",  color: c.turmas > 0    ? GREEN  : "rgba(255,255,255,.2)" },
+                  { val: c.excedente, label: "excess.", color: c.excedente > 0  ? YELLOW : "rgba(255,255,255,.2)" },
+                  { val: c.faltam,    label: "faltam",  color: c.faltam > 0    ? RED    : GREEN                   },
+                ].map(({ val, label, color }) => (
+                  <div key={label} style={{ textAlign: "center", flex: 1, background: "rgba(255,255,255,.03)", borderRadius: 8, padding: "6px 4px" }}>
+                    <div style={{ fontSize: 15, fontWeight: 900, color, lineHeight: 1 }}>{val}</div>
+                    <div style={{ fontSize: 8, color: "rgba(255,255,255,.28)", marginTop: 2, textTransform: "uppercase", letterSpacing: ".06em" }}>{label}</div>
                   </div>
                 ))}
               </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wider">Risco Operacional</span>
-                  <RiscoBadge risco={hero.risco} />
-                </div>
-                <span className="text-[10px] text-slate-600 font-mono">{hero.inscritos} inscritos detectados</span>
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontSize: 9, fontWeight: 800, padding: "5px 12px", borderRadius: 20, textTransform: "uppercase", letterSpacing: ".08em", color: c.intel.color, background: `${c.intel.color}14`, border: `1px solid ${c.intel.color}30` }}>
+                  {c.intel.label}
+                </span>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })}
+      </div>
 
-        {/* Painel lateral */}
-        <div className="space-y-3">
-          {/* Funil compacto */}
-          <div className="rounded-xl border border-white/[0.06] bg-[#040F1E] p-4">
-            <p className="text-[9px] font-black tracking-[0.15em] text-slate-500 uppercase mb-4">◈ Funil de Captação</p>
-            <div className="space-y-3">
-              <FunnelBar label="Pré-inscritos"   value={candidatos.length} pct={100}         color="#00E5FF" />
-              <div className="flex items-center gap-2 text-[10px] text-slate-600 pl-1">
-                <span className="flex-1 h-px bg-white/5" />
-                <span>{taxaAprova}% conversão</span>
-                <span className="flex-1 h-px bg-white/5" />
+      {/* ═══ CENTRAL DE INTELIGÊNCIA ACADÊMICA ════════════════════════════ */}
+      <div className="hd-glow-top" style={{ background: "linear-gradient(135deg,#060C18 0%,#091020 50%,#0B1428 100%)", borderRadius: 20, border: "1px solid rgba(29,158,117,.15)", overflow: "hidden", position: "relative" }}>
+        <div style={{ position: "absolute", top: -40, right: -40, width: 300, height: 300, borderRadius: "50%", background: "rgba(29,158,117,.04)", filter: "blur(40px)", pointerEvents: "none" }} />
+        <div style={{ padding: "20px 28px", borderBottom: "1px solid rgba(29,158,117,.12)", display: "flex", alignItems: "center", gap: 12, position: "relative" }}>
+          {dot("hd-dot-g", GREEN)}
+          <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(29,158,117,.6)", textTransform: "uppercase", letterSpacing: ".15em" }}>Central de inteligência acadêmica</span>
+          <div style={{ flex: 1, height: 1, background: "rgba(29,158,117,.12)" }} />
+          <span style={{ fontSize: 10, color: "rgba(29,158,117,.5)", fontWeight: 600 }}>IA decisória · tempo real</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, position: "relative" }}>
+          {[
+            {
+              icon: "🎯", title: "Curso Líder de Demanda",
+              value: top?.nome || "—",
+              sub: top ? `${top.ponderada} alunos ponderados · ${Math.min(top.pct, 100)}% da meta` : "Sem dados",
+              color: ORANGE, accent: "rgba(244,121,32,.08)",
+              insight: top?.viab === "viavel" ? "✓ Viabilidade confirmada para abertura imediata"
+                     : top?.viab === "proxima" ? "⚡ Pequena campanha garante a turma"
+                     : "⚠ Requer intensificação urgente de captação"
+            },
+            {
+              icon: "📈", title: "Saúde do Funil",
+              value: `${convAprov}%`,
+              sub: "Taxa inscritos → aprovados",
+              color: convAprov >= 60 ? GREEN : convAprov >= 30 ? YELLOW : RED,
+              accent: `rgba(${convAprov >= 60 ? "29,158,117" : convAprov >= 30 ? "244,201,106" : "226,75,74"},.08)`,
+              insight: convAprov >= 60 ? "✓ Funil operando com excelência"
+                     : convAprov >= 30 ? "⚡ Aprovação pode ser acelerada"
+                     : "⚠ Taxa de aprovação abaixo do esperado"
+            },
+            {
+              icon: "🏆", title: "Score de Abertura",
+              value: top ? `${Math.min(top.pct, 100)}` : "—",
+              sub: top ? `${top.nome} · nota de viabilidade` : "Sem dados",
+              color: top?.intel?.color || GREEN,
+              accent: "rgba(29,158,117,.08)",
+              insight: top
+                ? top.pct >= 100 ? `✓ ${top.turmas} turma${top.turmas !== 1 ? "s" : ""} já podem ser abertas agora`
+                : top.pct >= 70  ? `⚡ Faltam ${top.faltam} alunos para completar a turma`
+                :                  `⚠ Campanha necessária — captação atual insuficiente`
+                : "Aguardando inscrições"
+            },
+            {
+              icon: "🌐", title: "Pesquisa de Demanda",
+              value: pesquisa.length,
+              sub: `${pesquisa.length} manifestações registradas`,
+              color: BLUE, accent: "rgba(56,138,221,.08)",
+              insight: pesquisa.length >= CAP ? "✓ Demanda suficiente para análise de novos cursos"
+                     : pesquisa.length > 0    ? `⚡ ${CAP - pesquisa.length} manifestações para análise qualificada`
+                     :                          "⚠ Iniciar captação de pesquisa de demanda"
+            },
+            {
+              icon: "⚠", title: "Cursos em Risco",
+              value: criticos.length,
+              sub: criticos.length > 0 ? criticos.map(c => c.nome).join(" · ") : "Nenhum curso crítico",
+              color: criticos.length > 0 ? RED : GREEN,
+              accent: criticos.length > 0 ? "rgba(226,75,74,.08)" : "rgba(29,158,117,.08)",
+              insight: criticos.length > 0
+                ? `⚠ Ação imediata: intensificar captação em ${criticos.length} curso${criticos.length > 1 ? "s" : ""}`
+                : "✓ Nenhum curso abaixo do limite crítico"
+            },
+            {
+              icon: "🎓", title: "Programas Executivos",
+              value: totalPrograms,
+              sub: `${programs.filter(p => p.count > 0).length} de ${programs.length} com inscrições`,
+              color: PURPLE, accent: "rgba(83,74,183,.08)",
+              insight: totalPrograms > 0
+                ? `✓ ${programs.filter(p => p.count > 0).map(p => p.label.split(" ")[0]).join(", ")} captando ativamente`
+                : "⚡ Nenhum programa executivo com inscrições ainda"
+            },
+          ].map(({ icon, title, value, sub, color, accent, insight }, i) => (
+            <div key={title} style={{ padding: "22px 24px", borderRight: i % 3 < 2 ? "1px solid rgba(29,158,117,.08)" : "none", borderBottom: i < 3 ? "1px solid rgba(29,158,117,.08)" : "none", background: accent }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 20 }}>{icon}</span>
+                <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: ".1em" }}>{title}</span>
               </div>
-              <FunnelBar label="Aprovados"        value={aprovados.length}  pct={taxaAprova}  color="#00D97E" />
-              <div className="flex items-center gap-2 text-[10px] text-slate-600 pl-1">
-                <span className="flex-1 h-px bg-white/5" />
-                <span>{taxaMat}% conversão</span>
-                <span className="flex-1 h-px bg-white/5" />
-              </div>
-              <FunnelBar label="Matriculados"     value={totalMat}          pct={taxaMat}     color="#A78BFA" />
+              <div style={{ fontSize: 28, fontWeight: 900, color, letterSpacing: "-.03em", lineHeight: 1, marginBottom: 4 }}>{value}</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", marginBottom: 14 }}>{sub}</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,.5)", lineHeight: 1.55, borderTop: "1px solid rgba(255,255,255,.05)", paddingTop: 12 }}>{insight}</div>
             </div>
-          </div>
-
-          {/* KPIs compactos */}
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: "Pesquisa Demanda", value: pesquisa.length, color: "#FFB800" },
-              { label: "Cursos Viáveis",   value: stats.filter(c => c.score >= 100).length, color: "#00E5FF" },
-            ].map(k => (
-              <div key={k.label} className="rounded-xl border border-white/[0.06] bg-[#040F1E] p-3">
-                <p className="text-[9px] font-semibold tracking-wider text-slate-500 uppercase">{k.label}</p>
-                <p className="text-2xl font-black mt-1" style={{ color: k.color, fontFamily: "ui-monospace", textShadow: `0 0 16px ${k.color}40` }}>
-                  {k.value}
-                </p>
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
-
-      {/* ── Grid de cursos + Alertas ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        {/* Grid de cursos */}
-        <div className="lg:col-span-2 rounded-xl border border-white/[0.06] bg-[#040F1E]">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.04]">
-            <span className="text-[9px] font-black tracking-[0.15em] text-slate-500 uppercase">◈ Análise por Curso — Viabilidade de Abertura</span>
-            <span className="text-[9px] text-slate-600 font-mono">META: {META} inscritos</span>
-          </div>
-          <div className="p-3 space-y-1.5">
-            {stats.map((c, i) => {
-              const barW = Math.min(100, c.score);
-              const barColor = c.score >= 100 ? "#00E5FF" : c.score >= 70 ? "#FFB800" : "#FF4040";
-              return (
-                <div key={c.curso} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-white/[0.03] hover:bg-white/[0.02] transition-colors group">
-                  <span className="text-[10px] text-slate-600 font-mono w-4">{String(i + 1).padStart(2, "0")}</span>
-                  <span className="text-sm font-semibold text-slate-200 w-32 truncate">{c.curso}</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
-                    <div className="h-full rounded-full transition-all"
-                      style={{ width: `${barW}%`, background: barColor, boxShadow: `0 0 6px ${barColor}50` }} />
-                  </div>
-                  <span className="text-sm font-black tabular-nums w-8 text-right" style={{ color: barColor, fontFamily: "ui-monospace" }}>
-                    {c.inscritos}
-                  </span>
-                  <div className="flex items-center gap-1.5 w-28 justify-end">
-                    <span className="text-[10px] text-slate-600">apro. {c.aprovados}</span>
-                    <span className="text-white/10">·</span>
-                    <span className="text-[10px] text-purple-400">mat. {c.matriculados}</span>
-                  </div>
-                  <RiscoBadge risco={c.risco} />
-                </div>
-              );
-            })}
-            {stats.length === 0 && (
-              <div className="py-8 text-center text-slate-600 text-sm">Sem dados de inscrições</div>
-            )}
-          </div>
-        </div>
-
-        {/* Central de alertas */}
-        <div className="space-y-3">
-          <div className="rounded-xl border border-white/[0.06] bg-[#040F1E] p-4">
-            <p className="text-[9px] font-black tracking-[0.15em] text-slate-500 uppercase mb-3">◈ Central de Alertas</p>
-            <div className="space-y-3">
-              {/* Críticos */}
-              <div>
-                <p className="text-[9px] font-semibold text-red-400/70 tracking-widest uppercase mb-1.5">
-                  ⚠ Críticos — abaixo de {Math.round(META * 0.7)} inscritos
-                </p>
-                {criticos.length === 0
-                  ? <p className="text-[11px] text-slate-600 pl-2">Nenhum curso crítico</p>
-                  : <div className="space-y-1">
-                      {criticos.map(c => <AlertRow key={c.curso} label={c.curso} value={c.inscritos} type="danger" />)}
-                    </div>
-                }
-              </div>
-
-              <div className="h-px bg-white/[0.04]" />
-
-              {/* Acima da meta */}
-              <div>
-                <p className="text-[9px] font-semibold text-cyan-400/70 tracking-widest uppercase mb-1.5">
-                  ✓ Acima da meta — {META_IDEAL}+ inscritos
-                </p>
-                {acimaMeta.length === 0
-                  ? <p className="text-[11px] text-slate-600 pl-2">Nenhum</p>
-                  : <div className="space-y-1">
-                      {acimaMeta.map(c => <AlertRow key={c.curso} label={c.curso} value={c.inscritos} type="ok" />)}
-                    </div>
-                }
-              </div>
-
-              <div className="h-px bg-white/[0.04]" />
-
-              {/* Abaixo da meta */}
-              <div>
-                <p className="text-[9px] font-semibold text-amber-400/70 tracking-widest uppercase mb-1.5">
-                  △ Na zona — {META}–{META_IDEAL - 1} inscritos
-                </p>
-                {abaixo.length === 0
-                  ? <p className="text-[11px] text-slate-600 pl-2">Nenhum</p>
-                  : <div className="space-y-1">
-                      {abaixo.map(c => <AlertRow key={c.curso} label={c.curso} value={c.inscritos} type="warn" />)}
-                    </div>
-                }
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Programas executivos + Pesquisa ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-        {/* Programas */}
-        <div className="rounded-xl border border-white/[0.06] bg-[#040F1E]">
-          <div className="px-5 py-3 border-b border-white/[0.04]">
-            <span className="text-[9px] font-black tracking-[0.15em] text-slate-500 uppercase">◈ Programas Executivos</span>
-          </div>
-          <div className="p-4 grid grid-cols-2 gap-3">
-            {([
-              { label: "MBA Cuidados Paliativos", count: mba.length,        color: "#A78BFA" },
-              { label: "Protocolo Manchester",    count: manchester.length,  color: "#00E5FF" },
-              { label: "Port-a-Cath",             count: portacath.length,   color: "#00D97E" },
-              { label: "Workshop",                count: workshop.length,    color: "#FFB800" },
-            ] as const).map(p => (
-              <div key={p.label} className="relative overflow-hidden rounded-lg border border-white/[0.05] bg-white/[0.02] p-4">
-                <div className="absolute top-0 right-0 w-20 h-20 rounded-full pointer-events-none opacity-20"
-                  style={{ background: `radial-gradient(circle, ${p.color} 0%, transparent 70%)`, transform: "translate(40%, -40%)" }} />
-                <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest mb-2 leading-tight">{p.label}</p>
-                <p className="text-3xl font-black tabular-nums" style={{ color: p.color, fontFamily: "ui-monospace", textShadow: `0 0 20px ${p.color}40` }}>
-                  {p.count}
-                </p>
-                <p className="text-[10px] text-slate-600 mt-0.5">inscrição(ões)</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Pesquisa de demanda */}
-        <div className="rounded-xl border border-white/[0.06] bg-[#040F1E]">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.04]">
-            <span className="text-[9px] font-black tracking-[0.15em] text-slate-500 uppercase">◈ Pesquisa de Demanda — Top Cursos</span>
-            <span className="text-[9px] text-slate-600 font-mono">{pesquisa.length} respondentes</span>
-          </div>
-          <div className="p-4 space-y-2">
-            {(() => {
-              const por: Record<string, number> = {};
-              for (const p of pesquisa) { const c = p.curso ?? "Não informado"; por[c] = (por[c] ?? 0) + 1; }
-              const top = Object.entries(por).sort((a, b) => b[1] - a[1]).slice(0, 6);
-              const max = top[0]?.[1] ?? 1;
-              return top.map(([curso, count]) => (
-                <div key={curso} className="flex items-center gap-3">
-                  <span className="text-xs text-slate-400 w-36 truncate">{curso}</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${(count / max) * 100}%`, background: "#FFB800", boxShadow: "0 0 6px rgba(255,184,0,0.4)" }} />
-                  </div>
-                  <span className="text-xs font-black text-amber-400 w-6 text-right tabular-nums" style={{ fontFamily: "ui-monospace" }}>
-                    {count}
-                  </span>
-                </div>
-              ));
-            })()}
-            {pesquisa.length === 0 && <p className="text-sm text-slate-600 text-center py-4">Sem respostas</p>}
-          </div>
-        </div>
-      </div>
-
     </div>
   );
 }

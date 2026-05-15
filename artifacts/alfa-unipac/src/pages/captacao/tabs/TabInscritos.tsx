@@ -1,234 +1,221 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, Download, CheckCircle, Trash2, Pencil, X, AlertTriangle } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
-import { exportRelatorioXlsx } from "@/utils/export";
-import type { Candidato } from "../PainelCaptacao";
+import type { Candidato, Curso } from "../PainelCaptacao";
+import { ORANGE, GREEN, NAVY, CURSOS_OFICIAIS } from "../PainelCaptacao";
 
-const CURSOS_OFICIAIS = ["Administração", "Nutrição", "Fisioterapia", "Farmácia", "Enfermagem"];
-const STATUS_LIST = ["Inscrito", "Aprovado", "Matriculado", "Desistente"];
-
-const STATUS_BADGE: Record<string, string> = {
-  Inscrito:    "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  Aprovado:    "bg-green-500/20 text-green-400 border-green-500/30",
-  Matriculado: "bg-cyan-400/20 text-cyan-400 border-cyan-400/30",
-  Desistente:  "bg-red-500/20 text-red-400 border-red-500/30",
+const S = {
+  filterInp: { padding: "9px 14px", border: "1px solid rgba(255,255,255,.08)", borderRadius: 9, fontSize: 13, outline: "none", background: "rgba(255,255,255,.04)", color: "#fff", flex: 2, minWidth: 200 } as React.CSSProperties,
+  filterSel: { padding: "9px 14px", border: "1px solid rgba(255,255,255,.08)", borderRadius: 9, fontSize: 13, outline: "none", background: "#0D1530", color: "#fff", flex: 1, minWidth: 140 } as React.CSSProperties,
+  tableWrap: { background: "#0D1530", borderRadius: 14, border: "1px solid rgba(255,255,255,.07)", overflow: "auto", marginBottom: 16 } as React.CSSProperties,
+  table:     { width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 860 } as React.CSSProperties,
+  th:        { textAlign: "left", padding: "11px 14px", fontWeight: 700, fontSize: 10, color: "rgba(255,255,255,.35)", borderBottom: "1px solid rgba(255,255,255,.06)", background: "rgba(255,255,255,.02)", textTransform: "uppercase", letterSpacing: ".07em", whiteSpace: "nowrap" } as React.CSSProperties,
+  td:        { padding: "11px 14px", borderBottom: "1px solid rgba(255,255,255,.04)", color: "rgba(255,255,255,.85)" } as React.CSSProperties,
+  aprvBtn:   { background: GREEN, border: "none", color: "#fff", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" } as React.CSSProperties,
+  editBtn:   { background: "none", border: "1px solid rgba(255,255,255,.1)", color: "rgba(255,255,255,.6)", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" } as React.CSSProperties,
+  delBtn:    { background: "none", border: "1px solid rgba(226,75,74,.3)", color: "#F09595", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" } as React.CSSProperties,
+  exportBtn: (bg: string) => ({ padding: "9px 18px", background: bg, color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }) as React.CSSProperties,
+  overlay:   { position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 } as React.CSSProperties,
+  modal:     { background: "#0D1530", borderRadius: 16, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto", border: "1px solid rgba(255,255,255,.1)" } as React.CSSProperties,
+  inp:       { padding: "10px 14px", border: "1px solid rgba(255,255,255,.1)", borderRadius: 9, fontSize: 13, color: "#fff", outline: "none", background: "rgba(255,255,255,.04)", width: "100%", boxSizing: "border-box" } as React.CSSProperties,
 };
 
-const inp = "bg-[#0F172A] border border-white/10 text-white placeholder-slate-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30";
-const sel = "bg-[#0F172A] border border-white/10 text-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-400";
+// ConvBadge idêntico ao original
+function ConvBadge({ v }: { v: string }) {
+  const map: Record<string, [string, string, string]> = {
+    colaborador:  ["rgba(30,45,107,.4)",    "#7DC5FF",              "Colaborador"],
+    beneficiario: ["rgba(244,121,32,.2)",   "#FFAD6B",              "Beneficiário"],
+    pagante:      ["rgba(255,255,255,.06)", "rgba(255,255,255,.5)", "Pagante"],
+  };
+  const [bg, color, label] = map[v] || ["rgba(255,255,255,.06)", "rgba(255,255,255,.5)", v];
+  return <span style={{ display: "inline-block", fontSize: 10, padding: "2px 9px", borderRadius: 20, fontWeight: 700, background: bg, color }}>{label}</span>;
+}
 
-export default function TabInscritos() {
+export default function TabInscritos({ inscritos, todosInscritos, cursos }: {
+  inscritos: Candidato[];
+  todosInscritos: Candidato[];
+  cursos: Curso[];
+}) {
   const qc = useQueryClient();
-  const [search,    setSearch]    = useState("");
-  const [filtCurso, setFiltCurso] = useState("");
-  const [filtTurno, setFiltTurno] = useState("");
-  const [filtConv,  setFiltConv]  = useState("");
-  const [filtStatus,setFiltStatus]= useState("");
-  const [editando,  setEditando]  = useState<Candidato | null>(null);
-  const [novoStatus,setNovoStatus]= useState("");
+  const [busca,        setBusca]        = useState("");
+  const [filtroCurso,  setFiltroCurso]  = useState("");
+  const [filtroConv,   setFiltroConv]   = useState("");
+  const [modalAprovar, setModalAprovar] = useState<Candidato | null>(null);
+  const [cursoAprovar, setCursoAprovar] = useState("");
+  const [migrando,     setMigrando]     = useState(false);
+  const [migResult,    setMigResult]    = useState<{ ok: number; skip: number } | null>(null);
 
-  const { data: candidatos = [], isLoading } = useQuery<Candidato[]>({
-    queryKey: ["vc-candidatos"],
-    queryFn: () => apiFetch("/api/vestibular/candidatos"),
+  const candidatosFora = todosInscritos.filter(c => !CURSOS_OFICIAIS.includes(c.curso1));
+
+  const fl = inscritos.filter(c => {
+    const b = busca.toLowerCase();
+    return (!filtroCurso || c.curso1 === filtroCurso || c.curso2 === filtroCurso)
+      && (!filtroConv || c.convenio === filtroConv)
+      && (!b || c.nome?.toLowerCase().includes(b) || c.email?.toLowerCase().includes(b) || c.cpf?.includes(b));
   });
 
-  const patchStatus = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: string }) =>
-      apiFetch(`/api/vestibular/candidatos/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vc-candidatos"] }); toast.success("Status atualizado"); setEditando(null); },
-    onError: () => toast.error("Erro ao atualizar"),
-  });
-
-  const aprovar = useMutation({
+  const aprovarMutation = useMutation({
     mutationFn: async (c: Candidato) => {
       await apiFetch(`/api/vestibular/candidatos/${c.id}`, { method: "PATCH", body: JSON.stringify({ status: "Aprovado" }) });
-      await apiFetch("/api/vestibular/aprovados", { method: "POST", body: JSON.stringify({ nome: c.nome, curso: c.curso1, turno: c.turno }) });
+      await apiFetch("/api/vestibular/aprovados", { method: "POST", body: JSON.stringify({ nome: c.nome, curso: cursoAprovar, turno: c.turno }) });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["vc-candidatos"] });
       qc.invalidateQueries({ queryKey: ["vc-aprovados"] });
-      toast.success("Candidato aprovado e adicionado à lista de aprovados");
+      toast.success("Candidato aprovado");
+      setModalAprovar(null); setCursoAprovar("");
     },
     onError: () => toast.error("Erro ao aprovar"),
   });
 
-  const excluir = useMutation({
+  const excluirMutation = useMutation({
     mutationFn: (id: number) => apiFetch(`/api/vestibular/candidatos/${id}`, { method: "DELETE" }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["vc-candidatos"] }); toast.success("Removido"); },
     onError: () => toast.error("Erro ao remover"),
   });
 
-  const cursos  = [...new Set(candidatos.map(c => c.curso1))].sort();
-  const turnos  = [...new Set(candidatos.map(c => c.turno))].sort();
-  const convenios = [...new Set(candidatos.map(c => c.convenio))].sort();
+  const moverParaPesquisa = async () => {
+    setMigrando(true); setMigResult(null);
+    let ok = 0, skip = 0;
+    for (const c of candidatosFora) {
+      try {
+        await apiFetch("/api/vestibular/pesquisa", {
+          method: "POST",
+          body: JSON.stringify({ nome: c.nome, cpf: c.cpf, rg: c.rg, nascimento: c.nascimento, email: c.email, telefone: c.telefone, convenio: c.convenio, colaborador: c.colaborador, curso: c.curso1, cursoAlternativo: c.curso2, turno: c.turno }),
+        });
+        ok++;
+      } catch { skip++; }
+    }
+    setMigResult({ ok, skip });
+    setMigrando(false);
+    qc.invalidateQueries({ queryKey: ["vc-pesquisa"] });
+  };
 
-  const filtered = candidatos.filter(c =>
-    (!search    || c.nome.toLowerCase().includes(search.toLowerCase()) || c.cpf.includes(search) || c.email.toLowerCase().includes(search.toLowerCase())) &&
-    (!filtCurso || c.curso1 === filtCurso) &&
-    (!filtTurno || c.turno === filtTurno) &&
-    (!filtConv  || c.convenio === filtConv) &&
-    (!filtStatus|| c.status === filtStatus)
-  );
+  const exportCSV = () => {
+    const rows = [
+      ["Nome","CPF","RG","Nascimento","Email","Telefone","Convênio","Colaborador","1ª Opção","2ª Opção","Turno","Data"],
+      ...fl.map(c => [c.nome,c.cpf,c.rg,c.nascimento,c.email,c.telefone,c.convenio,c.colaborador,c.curso1,c.curso2,c.turno,c.createdAt?.slice(0,10)]),
+    ];
+    const csv = rows.map(r => r.map(v => `"${String(v||"").replace(/"/g,'""')}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["﻿"+csv], { type: "text/csv;charset=utf-8" }));
+    a.download = "inscritos.csv"; a.click();
+  };
 
-  const foraDosOficiais = filtered.filter(c => !CURSOS_OFICIAIS.includes(c.curso1));
-
-  function exportar() {
-    exportRelatorioXlsx("Inscritos Vestibular 2026/2",
-      ["Nome", "CPF", "Email", "Telefone", "Convênio", "Curso 1", "Curso 2", "Turno", "Status"],
-      filtered.map(c => [c.nome, c.cpf, c.email, c.telefone, c.convenio, c.curso1, c.curso2, c.turno, c.status]),
-      "Vestibular_Inscritos.xlsx"
-    );
-  }
+  const listaCursos = cursos.length > 0 ? cursos : CURSOS_OFICIAIS.map(n => ({ id: 0, nome: n, periodo: "", ativo: true, createdAt: "" }));
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-4">
-      {/* Filtros */}
-      <div className="bg-[#1A2540] border border-white/[0.06] rounded-xl p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar nome, CPF ou email..." className={`${inp} pl-9 w-full`} />
-          </div>
-          <select value={filtCurso}  onChange={e => setFiltCurso(e.target.value)}  className={sel}>
-            <option value="">Todos os cursos</option>
-            {cursos.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select value={filtTurno}  onChange={e => setFiltTurno(e.target.value)}  className={sel}>
-            <option value="">Todos os turnos</option>
-            {turnos.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select value={filtConv}   onChange={e => setFiltConv(e.target.value)}   className={sel}>
-            <option value="">Todos os convênios</option>
-            {convenios.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
-          </select>
-          <select value={filtStatus} onChange={e => setFiltStatus(e.target.value)} className={sel}>
-            <option value="">Todos os status</option>
-            {STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          {(search || filtCurso || filtTurno || filtConv || filtStatus) && (
-            <button onClick={() => { setSearch(""); setFiltCurso(""); setFiltTurno(""); setFiltConv(""); setFiltStatus(""); }}
-              className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded border border-white/10">
-              Limpar
-            </button>
-          )}
-          <button onClick={exportar} className="ml-auto flex items-center gap-1.5 px-3 py-2 text-sm bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg border border-white/10 transition-colors">
-            <Download className="w-4 h-4" /> Exportar
-          </button>
+    <div style={{ fontFamily: "'Inter', system-ui, sans-serif", color: "#fff" }}>
+
+      {/* Seção header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: ".14em", whiteSpace: "nowrap" }}>
+          Candidatos inscritos · {inscritos.length} registro{inscritos.length !== 1 ? "s" : ""}
         </div>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.06)" }} />
       </div>
 
-      {/* Alerta fora dos cursos oficiais */}
-      {foraDosOficiais.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-          <p className="text-sm text-amber-300">
-            <span className="font-semibold">{foraDosOficiais.length}</span> candidato(s) inscrito(s) em cursos fora da grade oficial do vestibular (na seleção atual)
-          </p>
+      {/* Banner mover para pesquisa */}
+      {candidatosFora.length > 0 && (
+        <div style={{ background: "rgba(244,121,32,.08)", border: "1px solid rgba(244,121,32,.25)", borderRadius: 12, padding: "14px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: ORANGE, marginBottom: 3 }}>
+              ⚠ {candidatosFora.length} candidatos com cursos fora do vestibular oficial
+            </div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)" }}>
+              Fonoaudiologia, Pedagogia, Serviço Social etc. devem estar na aba Pesquisa.
+            </div>
+            {migResult && <div style={{ fontSize: 11, color: "#4DD4A0", marginTop: 4 }}>✓ Migrados: {migResult.ok} · Já existiam: {migResult.skip}</div>}
+          </div>
+          <button onClick={moverParaPesquisa} disabled={migrando} style={{ padding: "8px 18px", background: ORANGE, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: migrando ? .6 : 1 }}>
+            {migrando ? "Migrando..." : "↗ Mover para Pesquisa"}
+          </button>
         </div>
       )}
 
-      {/* Tabela */}
-      <div className="bg-[#1A2540] border border-white/[0.06] rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-          <p className="text-sm text-slate-400">{filtered.length} de {candidatos.length} candidato(s)</p>
-        </div>
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="p-12 text-center text-slate-500">Carregando...</div>
-          ) : filtered.length === 0 ? (
-            <div className="p-12 text-center text-slate-500">Nenhum candidato encontrado.</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/[0.06]">
-                  {["Nome", "CPF", "Convênio", "1ª Opção", "2ª Opção", "Turno", "Status", "Ações"].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap bg-white/[0.02]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(c => (
-                  <tr key={c.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3 font-medium text-white">
-                      {c.nome}
-                      {!CURSOS_OFICIAIS.includes(c.curso1) && (
-                        <span className="ml-1.5 text-[10px] text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded">fora</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-400">{c.cpf}</td>
-                    <td className="px-4 py-3 text-slate-300 capitalize">{c.convenio}</td>
-                    <td className="px-4 py-3 text-slate-300">{c.curso1}</td>
-                    <td className="px-4 py-3 text-slate-400">{c.curso2}</td>
-                    <td className="px-4 py-3 text-slate-300">{c.turno}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_BADGE[c.status] ?? "border-white/10 text-slate-400"}`}>
-                        {c.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        {c.status === "Inscrito" && (
-                          <button
-                            onClick={() => aprovar.mutate(c)}
-                            disabled={aprovar.isPending}
-                            title="Aprovar"
-                            className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg border border-green-500/30 transition-colors disabled:opacity-50"
-                          >
-                            <CheckCircle className="w-3.5 h-3.5" /> Aprovar
-                          </button>
-                        )}
-                        <button
-                          onClick={() => { setEditando(c); setNovoStatus(c.status); }}
-                          title="Editar status"
-                          className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => { if (confirm(`Remover ${c.nome}?`)) excluir.mutate(c.id); }}
-                          title="Excluir"
-                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+      {/* Filtros */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+        <input style={S.filterInp} placeholder="Buscar nome, CPF ou e-mail..." value={busca} onChange={e => setBusca(e.target.value)} />
+        <select style={S.filterSel} value={filtroCurso} onChange={e => setFiltroCurso(e.target.value)}>
+          <option value="">Todos os cursos</option>
+          {listaCursos.map(c => <option key={c.nome} value={c.nome}>{c.nome}</option>)}
+        </select>
+        <select style={S.filterSel} value={filtroConv} onChange={e => setFiltroConv(e.target.value)}>
+          <option value="">Todos os vínculos</option>
+          <option value="colaborador">Colaborador</option>
+          <option value="beneficiario">Beneficiário</option>
+          <option value="pagante">Pagante</option>
+        </select>
+        <button style={S.exportBtn(NAVY)} onClick={exportCSV}>Exportar CSV</button>
       </div>
 
-      {/* Modal editar status */}
-      {editando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-[#1A2540] border border-white/10 rounded-2xl p-6 w-96 shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-semibold text-white">Alterar Status</h3>
-              <button onClick={() => setEditando(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
-            </div>
-            <p className="text-sm text-slate-400 mb-4 truncate">{editando.nome}</p>
-            <div className="mb-5">
-              <label className="block text-xs text-slate-400 mb-2">Novo Status</label>
-              <select value={novoStatus} onChange={e => setNovoStatus(e.target.value)} className={`${sel} w-full`}>
-                {STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setEditando(null)} className="flex-1 py-2.5 text-sm text-slate-400 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors">
-                Cancelar
-              </button>
+      <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginBottom: 10 }}>
+        {fl.length} candidato{fl.length !== 1 ? "s" : ""}{(busca || filtroCurso || filtroConv) ? " · filtrado" : ""}
+      </div>
+
+      {/* Tabela */}
+      <div style={S.tableWrap}>
+        <table style={S.table}>
+          <thead>
+            <tr>
+              {["#","Nome","CPF","E-mail","Telefone","1ª Opção","2ª Opção","Vínculo","Data",""].map(h => (
+                <th key={h} style={S.th}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {fl.length === 0 ? (
+              <tr><td colSpan={10} style={{ ...S.td, textAlign: "center", color: "rgba(255,255,255,.3)", padding: 40 }}>Nenhum resultado encontrado</td></tr>
+            ) : fl.map((c, i) => (
+              <tr key={c.id} style={{ background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,.02)" }}>
+                <td style={{ ...S.td, color: "rgba(255,255,255,.2)", fontSize: 10 }}>{c.id}</td>
+                <td style={{ ...S.td, fontWeight: 600, whiteSpace: "nowrap" }}>{c.nome}</td>
+                <td style={S.td}>{c.cpf}</td>
+                <td style={{ ...S.td, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.email}</td>
+                <td style={S.td}>{c.telefone}</td>
+                <td style={S.td}>{c.curso1}</td>
+                <td style={{ ...S.td, color: "rgba(255,255,255,.4)" }}>{c.curso2}</td>
+                <td style={S.td}><ConvBadge v={c.convenio} /></td>
+                <td style={{ ...S.td, color: "rgba(255,255,255,.3)", whiteSpace: "nowrap" }}>{c.createdAt?.slice(0,10) || "—"}</td>
+                <td style={{ ...S.td, whiteSpace: "nowrap" }}>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <button style={S.aprvBtn} onClick={() => { setModalAprovar(c); setCursoAprovar(c.curso1 || ""); }}>✓ Aprovar</button>
+                    <button style={S.editBtn}>Editar</button>
+                    <button style={S.delBtn} onClick={() => { if (window.confirm(`Excluir ${c.nome}?`)) excluirMutation.mutate(c.id); }}>Excluir</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modal Aprovar — idêntico ao original */}
+      {modalAprovar && (
+        <div style={S.overlay}>
+          <div style={{ background: "#0D1530", borderRadius: 14, padding: 28, maxWidth: 440, width: "100%", border: "1px solid rgba(255,255,255,.1)" }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Aprovar candidato</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,.4)", marginBottom: 18 }}>{modalAprovar.nome}</div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.6)", display: "block", marginBottom: 8 }}>Curso aprovado *</label>
+            <select
+              value={cursoAprovar}
+              onChange={e => setCursoAprovar(e.target.value)}
+              style={{ width: "100%", padding: "10px 14px", border: "1px solid rgba(255,255,255,.1)", borderRadius: 9, fontSize: 13, outline: "none", background: "#0A1128", color: "#fff", marginBottom: 18 }}
+            >
+              <option value="">Selecione...</option>
+              {listaCursos.map(c => <option key={c.nome} value={c.nome}>{c.nome}</option>)}
+            </select>
+            <div style={{ display: "flex", gap: 10 }}>
               <button
-                onClick={() => patchStatus.mutate({ id: editando.id, status: novoStatus })}
-                disabled={patchStatus.isPending}
-                className="flex-1 py-2.5 text-sm font-semibold bg-cyan-400 hover:bg-cyan-300 text-[#0A192F] rounded-xl transition-colors disabled:opacity-50"
-              >
-                Salvar
-              </button>
+                onClick={() => { setModalAprovar(null); setCursoAprovar(""); }}
+                style={{ flex: 1, padding: "10px", background: "rgba(255,255,255,.05)", color: "rgba(255,255,255,.5)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              >Cancelar</button>
+              <button
+                onClick={() => modalAprovar && aprovarMutation.mutate(modalAprovar)}
+                disabled={!cursoAprovar || aprovarMutation.isPending}
+                style={{ flex: 2, padding: "10px", background: cursoAprovar ? GREEN : "#333", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: cursoAprovar ? "pointer" : "not-allowed" }}
+              >{aprovarMutation.isPending ? "Aprovando..." : "✓ Confirmar aprovação"}</button>
             </div>
           </div>
         </div>
