@@ -10,6 +10,10 @@ import {
   LogOut,
   GraduationCap,
   ChevronRight,
+  UserPlus,
+  BookOpen,
+  Award,
+  TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { useGetPendentesCount } from "@workspace/api-client-react";
@@ -96,6 +100,14 @@ export default function Layout({ children }: { children: ReactNode }) {
           <NavItem href="/documentos" icon={<FileText />} label="Documentos" badge={pendentesCount} />
           <NavItem href="/bap" icon={<Receipt />} label="BAP" />
           <NavItem href="/relatorios" icon={<BarChart3 />} label="Relatórios" />
+
+          <div className="pt-4 pb-1">
+            <p className="px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Captação</p>
+          </div>
+          <NavItem href="/captacao/vestibular" icon={<UserPlus />} label="Vestibular" />
+          <NavItem href="/captacao/cursos" icon={<BookOpen />} label="Cursos" />
+          <NavItem href="/captacao/certificacoes" icon={<Award />} label="Certificações" />
+          <NavItem href="/captacao/pesquisa" icon={<TrendingUp />} label="Pesquisa de Demanda" />
         </nav>
 
         {/* User */}

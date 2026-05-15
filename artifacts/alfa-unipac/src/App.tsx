@@ -13,6 +13,10 @@ import Documentos from "@/pages/Documentos";
 import BAP from "@/pages/BAP";
 import Relatorios from "@/pages/Relatorios";
 import NotFound from "@/pages/not-found";
+import Vestibular from "@/pages/captacao/Vestibular";
+import CursosVestibular from "@/pages/captacao/CursosVestibular";
+import Certificacoes from "@/pages/captacao/Certificacoes";
+import PesquisaDemanda from "@/pages/captacao/PesquisaDemanda";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +64,18 @@ function Router() {
       </Route>
       <Route path="/relatorios">
         <ProtectedLayout><Relatorios /></ProtectedLayout>
+      </Route>
+      <Route path="/captacao/vestibular">
+        <ProtectedLayout><Vestibular /></ProtectedLayout>
+      </Route>
+      <Route path="/captacao/cursos">
+        <ProtectedLayout><CursosVestibular /></ProtectedLayout>
+      </Route>
+      <Route path="/captacao/certificacoes">
+        <ProtectedLayout><Certificacoes /></ProtectedLayout>
+      </Route>
+      <Route path="/captacao/pesquisa">
+        <ProtectedLayout><PesquisaDemanda /></ProtectedLayout>
       </Route>
       <Route path="/">
         <Redirect to="/dashboard" />
