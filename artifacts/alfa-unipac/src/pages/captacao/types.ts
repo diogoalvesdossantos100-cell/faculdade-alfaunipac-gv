@@ -29,6 +29,21 @@ export type Aprovado = {
   turno: string | null;
   matriculado: boolean;
   createdAt: string;
+  // Gestão de matrícula
+  statusMatricula: string | null;
+  telefone: string | null;
+  prazoDocs: string | null;
+  docRg: boolean | null;
+  docTitulo: boolean | null;
+  docNascimento: boolean | null;
+  docCasamento: boolean | null;
+  docEndereco: boolean | null;
+  docMedio: boolean | null;
+  docSuperior: boolean | null;
+  checkGrupoAvisos: boolean | null;
+  checkGrupoTurma: boolean | null;
+  checkFacial: boolean | null;
+  checkDigitalizado: boolean | null;
 };
 
 export type Pesquisa = {

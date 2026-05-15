@@ -14,6 +14,7 @@ import BAP from "@/pages/BAP";
 import Relatorios from "@/pages/Relatorios";
 import NotFound from "@/pages/not-found";
 import PainelCaptacao from "@/pages/captacao/PainelCaptacao";
+import Vestibular from "@/pages/captacao/Vestibular";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +36,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
+      <Route path="/inscricao" component={Vestibular} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard">
         <ProtectedLayout><Dashboard /></ProtectedLayout>

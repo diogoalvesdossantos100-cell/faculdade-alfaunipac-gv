@@ -33,6 +33,24 @@ export const vestibularAprovadosTable = pgTable("vestibular_aprovados", {
   curso: text("curso").notNull(),
   turno: text("turno"),
   matriculado: boolean("matriculado").notNull().default(false),
+  // ── Gestão de matrícula ─────────────────────────────────────────────────
+  // 'Providenciando Docs' | 'Doc. Pendente' | 'Doc. Completa' | 'Matriculado' | 'Desistente'
+  statusMatricula: text("status_matricula").default("Providenciando Docs"),
+  telefone: text("telefone"),
+  prazoDocs: text("prazo_docs"),
+  // Checklist — documentação recebida
+  docRg: boolean("doc_rg").default(false),
+  docTitulo: boolean("doc_titulo").default(false),
+  docNascimento: boolean("doc_nascimento").default(false),
+  docCasamento: boolean("doc_casamento").default(false),
+  docEndereco: boolean("doc_endereco").default(false),
+  docMedio: boolean("doc_medio").default(false),
+  docSuperior: boolean("doc_superior").default(false),
+  // Checklist — secretaria
+  checkGrupoAvisos: boolean("check_grupo_avisos").default(false),
+  checkGrupoTurma: boolean("check_grupo_turma").default(false),
+  checkFacial: boolean("check_facial").default(false),
+  checkDigitalizado: boolean("check_digitalizado").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

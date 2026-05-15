@@ -5,8 +5,7 @@ import { requireAuth } from "../../middlewares/auth";
 
 const router: IRouter = Router();
 
-// ADMIN — list approved candidates
-router.get("/vestibular/aprovados", requireAuth, async (req, res): Promise<void> => {
+router.get("/vestibular/aprovados", requireAuth, async (_req, res): Promise<void> => {
   const aprovados = await db
     .select()
     .from(vestibularAprovadosTable)
@@ -15,7 +14,6 @@ router.get("/vestibular/aprovados", requireAuth, async (req, res): Promise<void>
   res.json(aprovados);
 });
 
-// ADMIN — add approved candidate
 router.post("/vestibular/aprovados", requireAuth, async (req, res): Promise<void> => {
   const parsed = insertVestibularAprovadoSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -31,12 +29,18 @@ router.post("/vestibular/aprovados", requireAuth, async (req, res): Promise<void
   res.status(201).json(aprovado);
 });
 
-// ADMIN — toggle matriculado / update
 router.patch("/vestibular/aprovados/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
 
-  const allowed = ["matriculado", "curso", "turno"] as const;
+  const allowed = [
+    "matriculado", "curso", "turno",
+    "statusMatricula", "telefone", "prazoDocs",
+    "docRg", "docTitulo", "docNascimento", "docCasamento",
+    "docEndereco", "docMedio", "docSuperior",
+    "checkGrupoAvisos", "checkGrupoTurma", "checkFacial", "checkDigitalizado",
+  ] as const;
+
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) update[key] = req.body[key];
@@ -52,7 +56,6 @@ router.patch("/vestibular/aprovados/:id", requireAuth, async (req, res): Promise
   res.json(aprovado);
 });
 
-// ADMIN — remove from approved list
 router.delete("/vestibular/aprovados/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }

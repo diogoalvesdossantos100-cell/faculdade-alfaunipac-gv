@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import type { Candidato, Aprovado, Pesquisa, Curso } from "../types";
 
 // ── Constantes idênticas ao HomeDashboard.jsx original ────────────────────
-const CAP    = 55;
+const CAP          = 55;
+const META_DEMANDA = 40;
 const GREEN  = "#1D9E75";
 const RED    = "#E24B4A";
 const YELLOW = "#F4C96A";
@@ -82,6 +83,33 @@ export default function TabComando({ candidatos, aprovados, pesquisa, mba, manch
   cursos: Curso[];
 }) {
   const cursosNomes = cursos.length > 0 ? cursos.map(c => c.nome) : Object.keys(CURSO_CFG);
+
+  type DemandaStat = { nome: string; ponderada: number; op1: number; op2: number; pct: number };
+
+  const demandaStats = useMemo<DemandaStat[]>(() => {
+    const acc: Record<string, { ponderada: number; op1: number; op2: number }> = {};
+    for (const p of pesquisa) {
+      if (p.curso) {
+        if (!acc[p.curso]) acc[p.curso] = { ponderada: 0, op1: 0, op2: 0 };
+        acc[p.curso].op1       += 1;
+        acc[p.curso].ponderada += 1;
+      }
+      if (p.cursoAlternativo) {
+        if (!acc[p.cursoAlternativo]) acc[p.cursoAlternativo] = { ponderada: 0, op1: 0, op2: 0 };
+        acc[p.cursoAlternativo].op2       += 1;
+        acc[p.cursoAlternativo].ponderada += 0.5;
+      }
+    }
+    return Object.entries(acc)
+      .map(([nome, v]) => ({
+        nome,
+        ponderada: Math.round(v.ponderada),
+        op1: v.op1,
+        op2: v.op2,
+        pct: Math.round((Math.round(v.ponderada) / META_DEMANDA) * 100),
+      }))
+      .sort((a, b) => b.ponderada - a.ponderada);
+  }, [pesquisa]);
 
   const stats = useMemo<CoordStat[]>(() => cursosNomes.map(nome => {
     const op1       = candidatos.filter(c => c.curso1 === nome).length;
@@ -367,6 +395,59 @@ export default function TabComando({ candidatos, aprovados, pesquisa, mba, manch
           );
         })}
       </div>
+
+      {/* ═══ ANÁLISE DE DEMANDA — NOVOS CURSOS ═══════════════════════════ */}
+      {demandaStats.length > 0 && (
+        <div style={{ background: "#0A1128", borderRadius: 16, border: "1px solid rgba(244,121,32,.15)", overflow: "hidden", marginBottom: 20 }}>
+          <div style={{ padding: "18px 24px", borderBottom: "1px solid rgba(244,121,32,.1)", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(244,121,32,.6)", textTransform: "uppercase", letterSpacing: ".14em" }}>
+              Análise de Demanda · Pesquisa de Interesse
+            </span>
+            <div style={{ flex: 1, height: 1, background: "rgba(244,121,32,.1)" }} />
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,.3)" }}>Meta de viabilidade: {META_DEMANDA} alunos</span>
+          </div>
+          <div style={{ padding: "12px 24px 8px" }}>
+            {demandaStats.map((d, i) => {
+              const barW   = `${Math.min(d.pct, 100)}%`;
+              const rec    = d.pct >= 100 ? { label: "Viável para implantação", color: "#1D9E75" }
+                           : d.pct >= 50  ? { label: "Em análise",              color: "#F4C96A" }
+                           :                { label: "Demanda insuficiente",     color: "#F47920" };
+              return (
+                <div key={d.nome} className="hd-rank"
+                  style={{ display: "grid", gridTemplateColumns: "28px 200px 1fr 160px 150px", alignItems: "center", gap: 16, padding: "12px 0", borderBottom: i < demandaStats.length - 1 ? "1px solid rgba(255,255,255,.04)" : "none" }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: "rgba(255,255,255,.18)", textAlign: "center" }}>#{i + 1}</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{d.nome}</div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", marginTop: 2 }}>op1: {d.op1} · op2: {d.op2} · pond: {d.ponderada}</div>
+                  </div>
+                  <div>
+                    <div style={{ height: 6, background: "rgba(255,255,255,.06)", borderRadius: 3, overflow: "hidden" }}>
+                      <div className="hd-prog" style={{ height: "100%", width: barW, background: `linear-gradient(90deg,${ORANGE},${rec.color})`, borderRadius: 3 }} />
+                    </div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,.25)", marginTop: 3 }}>{Math.min(d.pct, 100)}% · faltam {Math.max(META_DEMANDA - d.ponderada, 0)}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {[
+                      { val: d.ponderada, label: "pond.", color: ORANGE },
+                      { val: META_DEMANDA - d.ponderada > 0 ? META_DEMANDA - d.ponderada : 0, label: "faltam", color: d.ponderada >= META_DEMANDA ? "#1D9E75" : "#F4C96A" },
+                    ].map(({ val, label, color }) => (
+                      <div key={label} style={{ textAlign: "center", flex: 1, background: "rgba(255,255,255,.03)", borderRadius: 8, padding: "5px 4px" }}>
+                        <div style={{ fontSize: 14, fontWeight: 900, color, lineHeight: 1 }}>{val}</div>
+                        <div style={{ fontSize: 8, color: "rgba(255,255,255,.28)", marginTop: 2, textTransform: "uppercase", letterSpacing: ".06em" }}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <span style={{ fontSize: 9, fontWeight: 800, padding: "5px 12px", borderRadius: 20, textTransform: "uppercase", letterSpacing: ".08em", color: rec.color, background: `${rec.color}18`, border: `1px solid ${rec.color}30` }}>
+                      {rec.label}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ═══ CENTRAL DE INTELIGÊNCIA ACADÊMICA ════════════════════════════ */}
       <div className="hd-glow-top" style={{ background: "linear-gradient(135deg,#060C18 0%,#091020 50%,#0B1428 100%)", borderRadius: 20, border: "1px solid rgba(29,158,117,.15)", overflow: "hidden", position: "relative" }}>
