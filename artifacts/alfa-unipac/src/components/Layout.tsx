@@ -104,10 +104,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <div className="pt-4 pb-1">
             <p className="px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Captação</p>
           </div>
-          <NavItem href="/captacao/vestibular" icon={<UserPlus />} label="Vestibular" />
-          <NavItem href="/captacao/cursos" icon={<BookOpen />} label="Cursos" />
-          <NavItem href="/captacao/certificacoes" icon={<Award />} label="Certificações" />
-          <NavItem href="/captacao/pesquisa" icon={<TrendingUp />} label="Pesquisa de Demanda" />
+          <NavItem href="/captacao" icon={<UserPlus />} label="Painel Vestibular" />
         </nav>
 
         {/* User */}
